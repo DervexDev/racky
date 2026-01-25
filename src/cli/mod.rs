@@ -9,6 +9,7 @@ use log::LevelFilter;
 use crate::util;
 
 mod install;
+mod server;
 
 macro_rules! about {
 	() => {
@@ -104,6 +105,7 @@ impl Cli {
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Commands::Install(command) => command.main(),
+			Commands::Server(command) => command.main(),
 		}
 	}
 }
@@ -111,4 +113,5 @@ impl Cli {
 #[derive(Subcommand)]
 pub enum Commands {
 	Install(install::Install),
+	Server(server::Server),
 }

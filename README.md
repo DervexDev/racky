@@ -9,5 +9,5 @@ Run the following command in your terminal:
 ### macOS & Linux
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/DervexDev/racky/HEAD/scripts/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/DervexDev/racky/HEAD/scripts/install.sh | bash
 ```

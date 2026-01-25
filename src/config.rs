@@ -13,7 +13,7 @@ use optfield::optfield;
 use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
 use toml;
 
-use crate::{logger::Table, racky_error, util};
+use crate::{logger::Table, util};
 
 lazy_static! {
 	static ref CONFIG: RwLock<Config> = RwLock::new(Config::default());
@@ -22,10 +22,12 @@ lazy_static! {
 #[optfield(OptConfig, merge_fn, attrs = (derive(Deserialize)))]
 #[derive(Debug, Clone, Deserialize, DocumentedFields, Val, Iter, Get, Set)]
 pub struct Config {
-	/// Default server host name
+	/// Default server hostname
 	pub host: String,
-	/// Default server port number
+	/// Default server port
 	pub port: u16,
+	/// Default server password
+	pub password: String,
 }
 
 impl Default for Config {
@@ -33,6 +35,7 @@ impl Default for Config {
 		Self {
 			host: String::from("localhost"),
 			port: 5000,
+			password: String::new(),
 		}
 	}
 }
@@ -49,20 +52,13 @@ impl Config {
 	pub fn load() -> Result<()> {
 		let mut config = Self::default();
 
-		let result = || -> Result<()> {
-			let path = util::get_racky_dir()?.join("config").join("racky.toml");
+		let path = util::get_racky_dir()?.join("config").join("racky.toml");
 
-			if path.exists() {
-				config.merge_opt(toml::from_str(&fs::read_to_string(path)?)?);
-			}
-
-			Ok(())
-		}();
-
-		match result {
-			Ok(()) => *CONFIG.write().unwrap() = config,
-			Err(err) => racky_error!("Failed to load config: {err}"),
+		if path.exists() {
+			config.merge_opt(toml::from_str(&fs::read_to_string(path)?)?);
 		}
+
+		*CONFIG.write().unwrap() = config;
 
 		Ok(())
 	}

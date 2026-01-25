@@ -5,7 +5,8 @@ use std::{
 };
 
 use env_logger::WriteStyle;
-use racky::{cli::Cli, logger, racky_error};
+use log::{error, trace};
+use racky::{cli::Cli, config::Config, logger, racky_error};
 
 fn main() -> ExitCode {
 	let cli = Cli::new();
@@ -30,6 +31,11 @@ fn main() -> ExitCode {
 	env::set_var("RUST_BACKTRACE", if cli.backtrace() { "1" } else { "0" });
 
 	logger::init(verbosity, log_style);
+
+	match Config::load() {
+		Ok(()) => trace!("Config loaded successfully"),
+		Err(err) => error!("Failed to load config: {err}"),
+	}
 
 	match cli.main() {
 		Ok(()) => ExitCode::SUCCESS,
