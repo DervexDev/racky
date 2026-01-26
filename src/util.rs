@@ -1,16 +1,7 @@
-use std::{env, path::PathBuf};
+use std::env;
 
-use anyhow::{Context, Result};
-use directories::UserDirs;
 use env_logger::WriteStyle;
 use log::LevelFilter;
-
-/// Returns the `.racky` directory
-pub fn get_racky_dir() -> Result<PathBuf> {
-	UserDirs::new()
-		.context("Failed to get user directory")
-		.map(|dirs| dirs.home_dir().join(".racky"))
-}
 
 /// Returns the `RUST_VERBOSE` environment variable
 pub fn env_verbosity() -> LevelFilter {

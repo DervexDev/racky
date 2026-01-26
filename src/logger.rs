@@ -5,9 +5,9 @@ use std::{
 
 use colored::{Color, Colorize};
 use dialoguer::{
-	console::{style, Style, StyledObject},
-	theme::Theme,
 	Confirm,
+	console::{Style, StyledObject, style},
+	theme::Theme,
 };
 use env_logger::{Builder, WriteStyle};
 use log::{Level, LevelFilter};
@@ -34,9 +34,7 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 	let mut builder = Builder::new();
 
 	builder.format(move |buffer, record| {
-		let is_racky = record.target() == "racky_log";
-
-		if record.level() > verbosity && !is_racky {
+		if record.level() > verbosity && record.target() != "racky_log" {
 			return Ok(());
 		}
 
@@ -48,22 +46,13 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 			Level::Trace => Color::White,
 		};
 
-		if is_racky {
-			writeln!(
-				buffer,
-				"{}: {:?}",
-				record.level().to_string().color(color).bold(),
-				record.args()
-			)
-		} else {
-			writeln!(
-				buffer,
-				"[{}] {}: {:?}",
-				buffer.timestamp(),
-				record.level().to_string().color(color).bold(),
-				record.args(),
-			)
-		}
+		writeln!(
+			buffer,
+			"[{}] {}: {:?}",
+			buffer.timestamp(),
+			record.level().to_string().color(color).bold(),
+			record.args(),
+		)
 	});
 
 	if verbosity == LevelFilter::Off {

@@ -1,10 +1,10 @@
 use std::{env, fs, process::Command};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
-use directories::UserDirs;
 
 use crate::{
+	dirs,
 	ext::{PathExt, ResultExt},
 	logger, racky_error, racky_info, racky_warn,
 };
@@ -40,11 +40,8 @@ impl Install {
 	}
 
 	fn install(&self, server: bool) -> Result<()> {
-		let dirs = UserDirs::new().context("Failed to get home directory")?;
-
-		let racky_dir = dirs.home_dir().join(".racky");
-		let bin_dir = racky_dir.join("bin");
-		let config_dir = racky_dir.join("config");
+		let bin_dir = dirs::bin();
+		let config_dir = dirs::config();
 
 		if !bin_dir.exists() {
 			fs::create_dir_all(&bin_dir).desc("Failed to create bin directory")?;
@@ -62,10 +59,10 @@ impl Install {
 
 		let config_path = config_dir.join("racky.toml");
 
-		if !config_path.exists() {
-			if let Err(err) = fs::write(&config_path, "") {
-				racky_warn!("Failed to create config file at {}: {err}", config_path.to_string());
-			}
+		if !config_path.exists()
+			&& let Err(err) = fs::write(&config_path, "")
+		{
+			racky_warn!("Failed to create config file at {}: {err}", config_path.to_string());
 		}
 
 		#[cfg(target_os = "windows")]
@@ -87,7 +84,7 @@ impl Install {
 			bail!("Racky server is currently only supported on Linux!");
 		}
 
-		let service_dir = dirs.home_dir().join(".config/systemd/user");
+		let service_dir = dirs::home().join(".config/systemd/user");
 		let service_path = service_dir.join("racky.service");
 
 		if !service_dir.exists() {
