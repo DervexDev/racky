@@ -5,7 +5,7 @@ use std::{
 };
 
 use env_logger::WriteStyle;
-use log::{error, trace};
+use log::{debug, error};
 use racky::{cli::Cli, config::Config, logger, racky_error};
 
 fn main() -> ExitCode {
@@ -14,26 +14,28 @@ fn main() -> ExitCode {
 	let verbosity = cli.verbosity();
 	let log_style = cli.log_style();
 
-	if log_style == WriteStyle::Auto && io::stdin().is_terminal() {
-		env::set_var("RUST_LOG_STYLE", "always");
-	} else {
-		env::set_var(
-			"RUST_LOG_STYLE",
-			match log_style {
-				WriteStyle::Always => "always",
-				_ => "never",
-			},
-		)
-	}
+	unsafe {
+		if log_style == WriteStyle::Auto && io::stdin().is_terminal() {
+			env::set_var("RUST_LOG_STYLE", "always");
+		} else {
+			env::set_var(
+				"RUST_LOG_STYLE",
+				match log_style {
+					WriteStyle::Always => "always",
+					_ => "never",
+				},
+			)
+		}
 
-	env::set_var("RUST_VERBOSE", verbosity.as_str());
-	env::set_var("RUST_YES", if cli.yes() { "1" } else { "0" });
-	env::set_var("RUST_BACKTRACE", if cli.backtrace() { "1" } else { "0" });
+		env::set_var("RUST_VERBOSE", verbosity.as_str());
+		env::set_var("RUST_YES", if cli.yes() { "1" } else { "0" });
+		env::set_var("RUST_BACKTRACE", if cli.backtrace() { "1" } else { "0" });
+	}
 
 	logger::init(verbosity, log_style);
 
 	match Config::load() {
-		Ok(()) => trace!("Config loaded successfully"),
+		Ok(()) => debug!("Racky config loaded successfully"),
 		Err(err) => error!("Failed to load config: {err}"),
 	}
 

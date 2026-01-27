@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use colored::Colorize;
 
@@ -7,9 +7,9 @@ use crate::{config::Config, core::Core, ext::ResultExt, racky_info, server::Serv
 /// Start a Racky server
 #[derive(Parser)]
 pub struct Start {
-	/// Server hostname
-	#[arg(short = 'H', long)]
-	host: Option<String>,
+	/// Server address
+	#[arg(short = 'A', long)]
+	address: Option<String>,
 	/// Server port
 	#[arg(short = 'P', long)]
 	port: Option<u16>,
@@ -22,26 +22,29 @@ impl Start {
 	pub fn main(self) -> Result<()> {
 		let config = Config::new();
 
-		let host = self.host.unwrap_or(config.host.clone());
+		let address = self.address.unwrap_or(config.address.clone());
 		let port = self.port.unwrap_or(config.port);
 		let password = self
 			.password
 			.or(Some(config.password.clone()))
 			.filter(|p| !p.is_empty());
 
-		let core = Core::new();
-		core.start().desc("Failed to start core")?;
+		let mut core = Core::new();
+		let result = core.start().desc("Failed to start core")?;
 
-		let server = Server::new(core, &host, port, password);
+		racky_info!("Started {} of {} autostart programs", result.0, result.1);
+
+		let server = Server::new(core, &address, port, password);
 
 		if !server.is_port_free() {
 			bail!("Port {port} is already in use");
 		}
 
-		racky_info!("Racky server is running on {}", server.get_address().bold());
+		racky_info!(
+			"Racky server is running on {}",
+			format!("http://{address}:{port}").bold()
+		);
 
-		server.start().desc("Failed to start server")?;
-
-		Ok(())
+		server.start().desc("Failed to start server")
 	}
 }

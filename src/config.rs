@@ -10,10 +10,10 @@ use config_derive::{Get, Iter, Set, Val};
 use documented::DocumentedFields;
 use lazy_static::lazy_static;
 use optfield::optfield;
-use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, ser::SerializeMap};
 use toml;
 
-use crate::{logger::Table, util};
+use crate::{dirs, logger::Table};
 
 lazy_static! {
 	static ref CONFIG: RwLock<Config> = RwLock::new(Config::default());
@@ -22,8 +22,8 @@ lazy_static! {
 #[optfield(OptConfig, merge_fn, attrs = (derive(Deserialize)))]
 #[derive(Debug, Clone, Deserialize, DocumentedFields, Val, Iter, Get, Set)]
 pub struct Config {
-	/// Default server hostname
-	pub host: String,
+	/// Default server address
+	pub address: String,
 	/// Default server port
 	pub port: u16,
 	/// Default server password
@@ -33,7 +33,7 @@ pub struct Config {
 impl Default for Config {
 	fn default() -> Self {
 		Self {
-			host: String::from("localhost"),
+			address: String::from("localhost"),
 			port: 5000,
 			password: String::new(),
 		}
@@ -52,7 +52,7 @@ impl Config {
 	pub fn load() -> Result<()> {
 		let mut config = Self::default();
 
-		let path = util::get_racky_dir()?.join("config").join("racky.toml");
+		let path = dirs::config().join("racky.toml");
 
 		if path.exists() {
 			config.merge_opt(toml::from_str(&fs::read_to_string(path)?)?);

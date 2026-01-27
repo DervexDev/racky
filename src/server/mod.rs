@@ -1,55 +1,43 @@
 use std::{io::Result, net::TcpListener, sync::Arc};
 
-use actix_web::{
-	web::{self, Data},
-	App, HttpServer, Responder,
-};
+use axum::{Router, middleware::from_fn_with_state, routing::get};
+use tokio::net;
 
 use crate::core::Core;
 
+mod middleware;
+mod root;
+
 pub struct Server {
-	core: Arc<Core>,
-	host: String,
+	router: Router,
+	address: String,
 	port: u16,
-	password: Option<String>,
 }
 
 impl Server {
-	pub fn new(core: Core, host: &str, port: u16, password: Option<String>) -> Self {
+	pub fn new(core: Core, address: &str, port: u16, password: Option<String>) -> Self {
+		let router = Router::new()
+			.route("/", get(root::main))
+			.layer(from_fn_with_state(password, middleware::auth::main))
+			.with_state(Arc::new(core));
+
 		Self {
-			core: Arc::new(core),
-			host: host.to_owned(),
+			router,
+			address: address.to_owned(),
 			port,
-			password,
 		}
 	}
 
-	#[actix_web::main]
-	pub async fn start(&self) -> Result<()> {
-		let core = self.core.clone();
-
-		HttpServer::new(move || {
-			App::new()
-				.app_data(Data::new(core.clone()))
-				// .service(details::main)
-				.default_service(web::to(Self::default_redirect))
-		})
-		.backlog(0)
-		.disable_signals()
-		.bind((self.host.clone(), self.port))?
-		.run()
+	#[tokio::main]
+	pub async fn start(self) -> Result<()> {
+		axum::serve(
+			net::TcpListener::bind((self.address.as_str(), self.port)).await?,
+			self.router,
+		)
 		.await
 	}
 
-	async fn default_redirect() -> impl Responder {
-		web::Redirect::to("/")
-	}
-
 	pub fn is_port_free(&self) -> bool {
-		TcpListener::bind((self.host.as_str(), self.port)).is_ok()
-	}
-
-	pub fn get_address(&self) -> String {
-		format!("http://{}:{}", self.host, self.port)
+		TcpListener::bind((self.address.as_str(), self.port)).is_ok()
 	}
 }

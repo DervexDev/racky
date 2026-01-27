@@ -11,6 +11,7 @@ use crate::util;
 mod install;
 mod server;
 
+#[macro_export]
 macro_rules! about {
 	() => {
 		concat!("Racky ", env!("CARGO_PKG_VERSION"))
