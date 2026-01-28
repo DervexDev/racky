@@ -1,6 +1,11 @@
 use std::{
 	fmt::{self, Display, Formatter},
-	io::Write,
+	fs::{self, File},
+	io::{BufRead, BufReader, Error, Write},
+	path::Path,
+	process::Child,
+	sync::mpsc,
+	thread,
 };
 
 use colored::{Color, Colorize};
@@ -12,7 +17,7 @@ use dialoguer::{
 use env_logger::{Builder, WriteStyle};
 use log::{Level, LevelFilter};
 
-use crate::util;
+use crate::{config::Config, dirs, ext::PathExt, util};
 
 // These Racky logs ignore verbosity level, aside of `Off`
 #[macro_export]
@@ -31,6 +36,7 @@ macro_rules! racky_info {
 }
 
 pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
+	let (tx, rx) = mpsc::channel::<String>();
 	let mut builder = Builder::new();
 
 	builder.format(move |buffer, record| {
@@ -46,9 +52,17 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 			Level::Trace => Color::White,
 		};
 
+		tx.send(format!(
+			"[{}] {}: {}",
+			buffer.timestamp(),
+			record.level(),
+			strip_ansi_escapes::strip_str(record.args().to_string())
+		))
+		.ok();
+
 		writeln!(
 			buffer,
-			"[{}] {}: {:?}",
+			"[{}] {}: {}",
 			buffer.timestamp(),
 			record.level().to_string().color(color).bold(),
 			record.args(),
@@ -65,6 +79,17 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 
 	builder.write_style(log_style);
 	builder.init();
+
+	thread::spawn(move || {
+		let path = dirs::logs().join("racky");
+
+		let mut file = None;
+		let mut size = 0;
+
+		while let Ok(message) = rx.recv() {
+			log(&message, &mut file, &mut size, &path).ok();
+		}
+	});
 }
 
 pub fn prompt(prompt: &str, default: bool) -> bool {
@@ -83,6 +108,100 @@ pub fn prompt(prompt: &str, default: bool) -> bool {
 		.interact();
 
 	result.unwrap_or(default)
+}
+
+pub fn capture_output(process: &mut Child, path: &Path) {
+	let stdout = process.stdout.take().unwrap();
+	let stderr = process.stderr.take().unwrap();
+	let path = path.to_owned();
+
+	let (tx_out, rx) = mpsc::channel::<Option<String>>();
+	let tx_err = tx_out.clone();
+
+	thread::spawn(move || {
+		let reader = BufReader::new(stdout);
+
+		for line in reader.lines().map_while(Result::ok) {
+			tx_out.send(Some(line)).ok();
+		}
+
+		tx_out.send(None).ok();
+	});
+
+	thread::spawn(move || {
+		let reader = BufReader::new(stderr);
+
+		for line in reader.lines().map_while(Result::ok) {
+			tx_err.send(Some(line)).ok();
+		}
+
+		tx_err.send(None).ok();
+	});
+
+	thread::spawn(move || {
+		let mut eof_count = 0;
+
+		let mut file = None;
+		let mut size = 0;
+
+		while eof_count < 2 {
+			match rx.recv() {
+				Ok(Some(line)) => {
+					log(&line, &mut file, &mut size, &path).ok();
+				}
+				Ok(None) => eof_count += 1,
+				Err(_) => break,
+			}
+		}
+	});
+}
+
+fn log(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) -> Result<(), Error> {
+	let config = Config::new();
+	let current_file = match file {
+		Some(file) => file,
+		None => {
+			if !path.exists() {
+				fs::create_dir_all(path)?;
+			}
+
+			if config.log_file_limit > 0 {
+				let logs = fs::read_dir(path)?.collect::<Vec<_>>();
+				let diff = (logs.len() + 1).saturating_sub(config.log_file_limit);
+
+				if diff > 0 {
+					let mut logs = logs
+						.iter()
+						.filter_map(|log| log.as_ref().ok().map(|entry| entry.path()))
+						.collect::<Vec<_>>();
+
+					logs.sort_by(|a, b| a.get_stem().cmp(b.get_stem()));
+
+					for log in logs.iter().take(diff) {
+						fs::remove_file(log)?;
+					}
+				}
+			}
+
+			let path = path.join(format!("{}.log", util::timestamp().replace(":", "-")));
+
+			*file = Some(File::create(path)?);
+			file.as_mut().unwrap()
+		}
+	};
+
+	let line = format!("[{}] {}\n", util::timestamp(), message);
+	write!(current_file, "{}", line)?;
+	current_file.flush()?;
+
+	*size += line.len();
+
+	if *size > config.log_size_limit * 1024 * 1024 {
+		*file = None;
+		*size = 0;
+	}
+
+	Ok(())
 }
 
 pub struct Table {
@@ -142,7 +261,7 @@ impl Display for Table {
 	}
 }
 
-pub struct PromptTheme {
+struct PromptTheme {
 	pub prompt_style: Style,
 	pub prompt_prefix: StyledObject<String>,
 	pub prompt_suffix: StyledObject<String>,

@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fs, path::PathBuf, process::Command, thread};
+use std::{
+	collections::HashMap,
+	fs,
+	path::PathBuf,
+	process::{Command, Stdio},
+	thread,
+};
 
 use anyhow::Result;
 use config_derive::Set;
@@ -6,7 +12,7 @@ use log::{debug, error, trace, warn};
 use serde::{Deserialize, Serialize};
 use toml::Value;
 
-use crate::{dirs, ext::PathExt, racky_error, racky_info};
+use crate::{dirs, ext::PathExt, logger, racky_error, racky_info};
 
 #[derive(Debug)]
 pub struct Program {
@@ -120,7 +126,11 @@ impl Program {
 			Command::new(&self.paths.executable)
 		};
 
-		let result = command.envs(&self.vars).spawn();
+		let result = command
+			.envs(&self.vars)
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn();
 
 		let mut process = match result {
 			Ok(process) => {
@@ -132,6 +142,8 @@ impl Program {
 				return false;
 			}
 		};
+
+		logger::capture_output(&mut process, &self.paths.logs);
 
 		thread::spawn(move || {
 			let result = process.wait();

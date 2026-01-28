@@ -1,6 +1,7 @@
-use std::env;
+use std::{env, time::SystemTime};
 
 use env_logger::WriteStyle;
+use jiff::Timestamp;
 use log::LevelFilter;
 
 /// Returns the `RUST_VERBOSE` environment variable
@@ -39,4 +40,9 @@ pub fn env_backtrace() -> bool {
 pub fn env_yes() -> bool {
 	let yes = env::var("RUST_YES").unwrap_or("0".into());
 	yes == "1"
+}
+
+/// Returns the current timestamp in the `YYYY-MM-DD HH:MM:SS` format
+pub fn timestamp() -> String {
+	format!("{:.0}", Timestamp::try_from(SystemTime::now()).unwrap_or_default())
 }

@@ -28,6 +28,10 @@ pub struct Config {
 	pub port: u16,
 	/// Default server password
 	pub password: String,
+	/// Maximum size of a log file in megabytes
+	pub log_size_limit: usize,
+	/// Maximum number of log files to keep
+	pub log_file_limit: usize,
 }
 
 impl Default for Config {
@@ -36,6 +40,8 @@ impl Default for Config {
 			address: String::from("localhost"),
 			port: 5000,
 			password: String::new(),
+			log_size_limit: 10,
+			log_file_limit: 8,
 		}
 	}
 }
