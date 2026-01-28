@@ -3,12 +3,16 @@ use std::{collections::HashMap, fs};
 use anyhow::Result;
 use log::error;
 
-use crate::{core::program::Program, dirs, ext::PathExt};
+use crate::{
+	core::program::{ArcProgram, Program},
+	dirs,
+	ext::PathExt,
+};
 
 mod program;
 
 pub struct Core {
-	programs: HashMap<String, Program>,
+	programs: HashMap<String, ArcProgram>,
 }
 
 impl Core {
@@ -35,7 +39,7 @@ impl Core {
 		Ok((successful, total))
 	}
 
-	fn get_autostart_programs(&self) -> Result<Vec<Program>> {
+	fn get_autostart_programs(&self) -> Result<Vec<ArcProgram>> {
 		let mut programs = Vec::new();
 
 		for entry in fs::read_dir(dirs::config())? {

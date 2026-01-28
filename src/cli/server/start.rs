@@ -32,12 +32,16 @@ impl Start {
 		let mut core = Core::new();
 		let result = core.start().desc("Failed to start core")?;
 
-		racky_info!("Started {} of {} autostart programs", result.0, result.1);
+		racky_info!(
+			"Started {} of {} autostart programs",
+			result.0.to_string().bold(),
+			result.1.to_string().bold()
+		);
 
 		let server = Server::new(core, &address, port, password);
 
 		if !server.is_port_free() {
-			bail!("Port {port} is already in use");
+			bail!("Port {} is already in use", port.to_string().bold());
 		}
 
 		racky_info!(

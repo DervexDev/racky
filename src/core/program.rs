@@ -3,42 +3,37 @@ use std::{
 	fs,
 	path::PathBuf,
 	process::{Command, Stdio},
+	sync::{Arc, Mutex},
 	thread,
+	time::Duration,
 };
 
-use anyhow::Result;
-use config_derive::Set;
+use colored::Colorize;
 use log::{debug, error, trace, warn};
-use serde::{Deserialize, Serialize};
 use toml::Value;
 
-use crate::{dirs, ext::PathExt, logger, racky_error, racky_info};
+use crate::{config::ProgramConfig, dirs, ext::PathExt, logger, racky_error, racky_info, racky_warn};
 
-#[derive(Debug)]
+pub type ArcProgram = Arc<Program>;
+
+#[derive(Debug, Default)]
 pub struct Program {
 	pub name: String,
 	pub paths: ProgramPaths,
 	pub config: ProgramConfig,
 	pub vars: HashMap<String, String>,
+	pub attempts: Mutex<u64>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ProgramPaths {
 	pub executable: PathBuf,
 	pub config: PathBuf,
 	pub logs: PathBuf,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Set)]
-pub struct ProgramConfig {
-	pub auto_start: bool,
-	pub auto_restart: bool,
-	pub restart_delay: u64,
-	pub restart_attempts: u64,
-}
-
 impl Program {
-	pub fn new(name: &str) -> Option<Program> {
+	pub fn new(name: &str) -> Option<ArcProgram> {
 		let mut executable = dirs::bin().join(name);
 
 		if executable.is_dir() {
@@ -65,13 +60,13 @@ impl Program {
 				config: dirs::config().join(format!("{name}.toml")),
 				logs: dirs::logs().join(name),
 			},
-			config: ProgramConfig::default(),
-			vars: HashMap::new(),
+			attempts: Mutex::new(0),
+			..Default::default()
 		};
 
 		program.load_config();
 
-		Some(program)
+		Some(Arc::new(program))
 	}
 
 	pub fn load_config(&mut self) {
@@ -117,7 +112,7 @@ impl Program {
 		debug!("{} config loaded successfully", self.name);
 	}
 
-	pub fn start(&self) -> bool {
+	pub fn start(self: &ArcProgram) -> bool {
 		let mut command = if self.paths.executable.get_ext() == "sh" {
 			let mut command = Command::new("bash");
 			command.arg(&self.paths.executable);
@@ -126,6 +121,7 @@ impl Program {
 			Command::new(&self.paths.executable)
 		};
 
+		let name = self.name.bold();
 		let result = command
 			.envs(&self.vars)
 			.stdout(Stdio::piped())
@@ -134,20 +130,72 @@ impl Program {
 
 		let mut process = match result {
 			Ok(process) => {
-				racky_info!("Program {} started successfully", self.name);
+				racky_info!("Program {} started successfully", name);
 				process
 			}
 			Err(err) => {
-				racky_error!("Failed to start program {}: {err}", self.name);
+				racky_error!("Failed to start program {}: {err}", name);
 				return false;
 			}
 		};
 
 		logger::capture_output(&mut process, &self.paths.logs);
 
+		let this = self.clone();
+
 		thread::spawn(move || {
-			let result = process.wait();
-			println!("{:#?}", result);
+			let success = match process.wait() {
+				Ok(status) => {
+					if status.success() {
+						racky_info!("Program {} exited successfully", name);
+						true
+					} else {
+						racky_error!(
+							"Program {} exited with status code {}",
+							name,
+							status.code().unwrap_or(-1).to_string().bold()
+						);
+						false
+					}
+				}
+				Err(err) => {
+					racky_error!("Unexpected error while waiting for program {}: {err}", name);
+					false
+				}
+			};
+
+			if !this.config.auto_restart {
+				racky_warn!("Program {} will not restart: {} disabled", name, "auto_restart".bold());
+				return;
+			}
+
+			let mut attempts = this.attempts.lock().unwrap();
+
+			if *attempts >= this.config.restart_attempts {
+				racky_warn!(
+					"Program {} will not restart: maximum number of restart attempts reached: {}",
+					name,
+					attempts.to_string().bold()
+				);
+				return;
+			}
+
+			if success {
+				*attempts = 0;
+			} else {
+				*attempts += 1;
+			}
+
+			racky_info!(
+				"Program {} will restart in {} seconds. Attempt {}/{}",
+				name,
+				this.config.restart_delay.to_string().bold(),
+				attempts.to_string().bold(),
+				this.config.restart_attempts.to_string().bold()
+			);
+
+			thread::sleep(Duration::from_secs(this.config.restart_delay));
+			this.start();
 		});
 
 		true

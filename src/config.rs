@@ -141,3 +141,26 @@ impl Serialize for Config {
 		map.end()
 	}
 }
+
+#[derive(Debug, Serialize, Deserialize, Set)]
+pub struct ProgramConfig {
+	/// Whether to automatically start the program when the Racky server starts
+	pub auto_start: bool,
+	/// Whether to automatically restart the program after it exits
+	pub auto_restart: bool,
+	/// The delay in seconds before restarting the program after it exits
+	pub restart_delay: u64,
+	/// The maximum number of restart attempts after the program exits with an error code
+	pub restart_attempts: u64,
+}
+
+impl Default for ProgramConfig {
+	fn default() -> Self {
+		Self {
+			auto_start: false,
+			auto_restart: true,
+			restart_delay: 3,
+			restart_attempts: 5,
+		}
+	}
+}

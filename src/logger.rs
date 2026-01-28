@@ -52,21 +52,15 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 			Level::Trace => Color::White,
 		};
 
-		tx.send(format!(
-			"[{}] {}: {}",
-			buffer.timestamp(),
-			record.level(),
-			strip_ansi_escapes::strip_str(record.args().to_string())
-		))
-		.ok();
-
-		writeln!(
-			buffer,
+		let message = format!(
 			"[{}] {}: {}",
 			buffer.timestamp(),
 			record.level().to_string().color(color).bold(),
-			record.args(),
-		)
+			record.args()
+		);
+
+		tx.send(message.clone()).ok();
+		writeln!(buffer, "{message}",)
 	});
 
 	if verbosity == LevelFilter::Off {
@@ -190,11 +184,11 @@ fn log(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) ->
 		}
 	};
 
-	let line = format!("[{}] {}\n", util::timestamp(), message);
-	write!(current_file, "{}", line)?;
+	let message = format!("[{}] {}\n", util::timestamp(), strip_ansi_escapes::strip_str(message));
+	write!(current_file, "{}", message)?;
 	current_file.flush()?;
 
-	*size += line.len();
+	*size += message.len();
 
 	if *size > config.log_size_limit * 1024 * 1024 {
 		*file = None;
