@@ -49,15 +49,14 @@ pub struct Cli {
 	#[arg(short = 'B', long, global = true)]
 	backtrace: bool,
 
-	/// Output coloring: auto, always, never
+	/// Output coloring mode
 	#[arg(
 		long,
 		short = 'C',
 		global = true,
 		value_name = "WHEN",
 		default_value = "auto",
-		hide_default_value = true,
-		hide_possible_values = true
+		hide_default_value = true
 	)]
 	color: ColorChoice,
 }

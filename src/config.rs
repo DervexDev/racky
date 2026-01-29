@@ -22,6 +22,8 @@ lazy_static! {
 #[optfield(OptConfig, merge_fn, attrs = (derive(Deserialize)))]
 #[derive(Debug, Clone, Deserialize, DocumentedFields, Val, Iter, Get, Set)]
 pub struct Config {
+	/// Default server alias
+	pub alias: String,
 	/// Default server address
 	pub address: String,
 	/// Default server port
@@ -37,6 +39,7 @@ pub struct Config {
 impl Default for Config {
 	fn default() -> Self {
 		Self {
+			alias: String::from("default"),
 			address: String::from("localhost"),
 			port: 5000,
 			password: String::new(),

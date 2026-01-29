@@ -33,13 +33,13 @@ impl Install {
 	pub fn main(self) -> Result<()> {
 		let side = if self.server { "server" } else { "client" };
 
-		self.install(self.server).desc("Failed to install Racky {side}")?;
+		self.install().desc("Failed to install Racky {side}")?;
 		racky_info!("Racky {side} has been installed successfully!");
 
 		Ok(())
 	}
 
-	fn install(&self, server: bool) -> Result<()> {
+	fn install(self) -> Result<()> {
 		let bin_dir = dirs::bin();
 		let config_dir = dirs::config();
 
@@ -78,7 +78,7 @@ impl Install {
 			}
 		}
 
-		if !server {
+		if !self.server {
 			return Ok(());
 		} else if !cfg!(target_os = "linux") {
 			bail!("Racky server is currently only supported on Linux!");

@@ -2,9 +2,9 @@ use anyhow::{Result, bail};
 use clap::Parser;
 use colored::Colorize;
 
-use crate::{config::Config, core::Core, ext::ResultExt, racky_info, server::Server};
+use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, server::Server};
 
-/// Start a Racky server
+/// Start the server (used by systemd service)
 #[derive(Parser)]
 pub struct Start {
 	/// Server address
@@ -20,6 +20,10 @@ pub struct Start {
 
 impl Start {
 	pub fn main(self) -> Result<()> {
+		self.start().desc("Failed to start server")
+	}
+
+	pub fn start(self) -> Result<()> {
 		let config = Config::new();
 
 		let address = self.address.unwrap_or(config.address.clone());
@@ -32,11 +36,19 @@ impl Start {
 		let mut core = Core::new();
 		let result = core.start().desc("Failed to start core")?;
 
-		racky_info!(
+		let message = format!(
 			"Started {} of {} autostart programs",
 			result.0.to_string().bold(),
 			result.1.to_string().bold()
 		);
+
+		if result.0 == result.1 {
+			racky_info!("{message}");
+		} else if result.0 == 0 {
+			racky_error!("{message}");
+		} else {
+			racky_warn!("{message}");
+		}
 
 		let server = Server::new(core, &address, port, password);
 
@@ -49,6 +61,6 @@ impl Start {
 			format!("http://{address}:{port}").bold()
 		);
 
-		server.start().desc("Failed to start server")
+		server.start().desc("Could not start the serve session")
 	}
 }
