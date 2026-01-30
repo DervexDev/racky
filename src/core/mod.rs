@@ -9,7 +9,7 @@ use crate::{
 	ext::PathExt,
 };
 
-mod program;
+pub mod program;
 
 pub struct Core {
 	programs: HashMap<String, ArcProgram>,

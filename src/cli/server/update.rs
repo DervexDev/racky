@@ -2,21 +2,17 @@ use anyhow::{Result, bail};
 use clap::Parser;
 use colored::Colorize;
 
-use crate::{
-	cli::server::{read_servers, write_servers},
-	ext::ResultExt,
-	racky_info,
-};
+use crate::{ext::ResultExt, racky_info, servers};
 
 /// Update the configuration of an existing server
 #[derive(Parser)]
 pub struct Update {
 	/// Server alias to update
 	#[arg()]
-	alias: String,
+	server: String,
 	/// New server alias
-	#[arg(short = 'a', long = "alias")]
-	new_alias: Option<String>,
+	#[arg(short, long)]
+	alias: Option<String>,
 	/// New server address
 	#[arg(short = 'A', long)]
 	address: Option<String>,
@@ -37,11 +33,11 @@ impl Update {
 	}
 
 	fn update(self) -> Result<()> {
-		let mut servers = read_servers()?;
-		let mut server = if let Some(server) = servers.remove(&self.alias) {
+		let mut servers = servers::read()?;
+		let mut server = if let Some(server) = servers.remove(&self.server) {
 			server
 		} else {
-			bail!("Server with alias {} does not exist", self.alias.bold());
+			bail!("Server with alias {} does not exist", self.server.bold());
 		};
 
 		let mut updated = false;
@@ -78,11 +74,11 @@ impl Update {
 			}
 		};
 
-		let alias = if let Some(new_alias) = self.new_alias {
+		let alias = if let Some(alias) = self.alias {
 			updated = true;
-			new_alias
+			alias
 		} else {
-			self.alias
+			self.server
 		};
 
 		if !updated {
@@ -90,7 +86,7 @@ impl Update {
 		}
 
 		servers.insert(alias.clone(), server);
-		write_servers(&servers)?;
+		servers::write(&servers)?;
 
 		racky_info!("Server {} updated successfully", alias.bold(),);
 

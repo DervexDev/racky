@@ -9,6 +9,7 @@ use log::LevelFilter;
 use crate::util;
 
 mod install;
+mod program;
 mod server;
 
 #[macro_export]
@@ -105,6 +106,7 @@ impl Cli {
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Commands::Install(command) => command.main(),
+			Commands::Program(command) => command.main(),
 			Commands::Server(command) => command.main(),
 		}
 	}
@@ -113,5 +115,6 @@ impl Cli {
 #[derive(Subcommand)]
 pub enum Commands {
 	Install(install::Install),
+	Program(program::Program),
 	Server(server::Server),
 }

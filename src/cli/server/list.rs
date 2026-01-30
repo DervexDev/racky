@@ -1,7 +1,7 @@
 use anyhow::{Result, bail};
 use clap::Parser;
 
-use crate::{cli::server::read_servers, ext::ResultExt, logger::Table, racky_info};
+use crate::{ext::ResultExt, logger::Table, racky_info, servers};
 
 /// List all configured servers
 #[derive(Parser)]
@@ -13,7 +13,7 @@ impl List {
 	}
 
 	fn list(self) -> Result<()> {
-		let servers = read_servers()?;
+		let servers = servers::read()?;
 
 		if servers.is_empty() {
 			bail!("There are no configured Racky servers");

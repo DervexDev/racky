@@ -2,18 +2,14 @@ use anyhow::{Result, bail};
 use clap::Parser;
 use colored::Colorize;
 
-use crate::{
-	cli::server::{read_servers, write_servers},
-	ext::ResultExt,
-	racky_info,
-};
+use crate::{ext::ResultExt, racky_info, servers};
 
 /// Remove the existing server
 #[derive(Parser)]
 pub struct Remove {
 	/// Server alias to remove
 	#[arg()]
-	alias: String,
+	server: String,
 }
 
 impl Remove {
@@ -22,16 +18,16 @@ impl Remove {
 	}
 
 	fn remove(self) -> Result<()> {
-		let mut servers = read_servers()?;
+		let mut servers = servers::read()?;
 
-		if !servers.contains_key(&self.alias) {
-			bail!("Server with alias {} does not exist", self.alias.bold());
+		if !servers.contains_key(&self.server) {
+			bail!("Server with alias {} does not exist", self.server.bold());
 		}
 
-		servers.remove(&self.alias);
-		write_servers(&servers)?;
+		servers.remove(&self.server);
+		servers::write(&servers)?;
 
-		racky_info!("Server {} removed successfully", self.alias.bold(),);
+		racky_info!("Server {} removed successfully", self.server.bold(),);
 
 		Ok(())
 	}

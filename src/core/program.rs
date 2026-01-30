@@ -1,7 +1,7 @@
 use std::{
 	collections::HashMap,
 	fs,
-	path::PathBuf,
+	path::{Path, PathBuf},
 	process::{Command, Stdio},
 	sync::{Arc, Mutex},
 	thread,
@@ -34,24 +34,7 @@ pub struct ProgramPaths {
 
 impl Program {
 	pub fn new(name: &str) -> Option<ArcProgram> {
-		let mut executable = dirs::bin().join(name);
-
-		if executable.is_dir() {
-			let mut path = executable.clone().join("racky.sh");
-
-			if !path.exists() {
-				path = executable.join("scripts").join("racky.sh");
-			}
-
-			executable = path
-		} else if !executable.exists() {
-			executable.pop();
-			executable = executable.join(format!("{name}.sh"))
-		}
-
-		if !executable.exists() {
-			return None;
-		}
+		let executable = find_executable(&dirs::bin().join(name))?;
 
 		let mut program = Self {
 			name: name.to_owned(),
@@ -200,4 +183,23 @@ impl Program {
 
 		true
 	}
+}
+
+pub fn find_executable(path: &Path) -> Option<PathBuf> {
+	let mut executable = path.to_owned();
+
+	if executable.is_dir() {
+		let mut path = executable.clone().join("racky.sh");
+
+		if !path.exists() {
+			path = executable.join("scripts").join("racky.sh");
+		}
+
+		executable = path
+	} else if !executable.exists() {
+		executable.pop();
+		executable = executable.join(format!("{}.sh", path.get_name()))
+	}
+
+	if executable.exists() { Some(executable) } else { None }
 }

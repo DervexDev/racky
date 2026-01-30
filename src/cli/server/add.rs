@@ -3,10 +3,10 @@ use clap::Parser;
 use colored::Colorize;
 
 use crate::{
-	cli::server::{ServerEntry, read_servers, write_servers},
 	config::Config,
 	ext::ResultExt,
 	racky_info,
+	servers::{self, Server},
 };
 
 /// Configure a new server
@@ -14,7 +14,7 @@ use crate::{
 pub struct Add {
 	/// Server alias (must be unique)
 	#[arg()]
-	alias: String,
+	server: String,
 	/// Server address
 	#[arg(short = 'A', long)]
 	address: Option<String>,
@@ -38,10 +38,10 @@ impl Add {
 		let port = self.port.unwrap_or(config.port);
 		let password = self.password.unwrap_or(config.password);
 
-		let mut servers = read_servers()?;
+		let mut servers = servers::read()?;
 
-		if servers.contains_key(&self.alias) {
-			bail!("Server with alias {} already exists", self.alias.bold());
+		if servers.contains_key(&self.server) {
+			bail!("Server with alias {} already exists", self.server.bold());
 		}
 
 		if servers.values().any(|s| s.address == address && s.port == port) {
@@ -53,8 +53,8 @@ impl Add {
 		}
 
 		servers.insert(
-			self.alias.clone(),
-			ServerEntry {
+			self.server.clone(),
+			Server {
 				address: address.clone(),
 				port,
 				password,
@@ -62,11 +62,11 @@ impl Add {
 			},
 		);
 
-		write_servers(&servers)?;
+		servers::write(&servers)?;
 
 		racky_info!(
 			"Server {} with URL {} added successfully",
-			self.alias.bold(),
+			self.server.bold(),
 			format!("http://{address}:{port}").bold()
 		);
 

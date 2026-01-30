@@ -62,7 +62,7 @@ impl Install {
 		if !config_path.exists()
 			&& let Err(err) = fs::write(&config_path, "")
 		{
-			racky_warn!("Failed to create config file at {}: {err}", config_path.to_string());
+			racky_warn!("Failed to create config file at {config_path:?}: {err}");
 		}
 
 		#[cfg(target_os = "windows")]

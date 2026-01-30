@@ -4,9 +4,9 @@ use colored::Colorize;
 
 use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, server::Server};
 
-/// Start the server (used by systemd service)
+/// Serve actual Racky server (used by systemd service)
 #[derive(Parser)]
-pub struct Start {
+pub struct Serve {
 	/// Server address
 	#[arg(short = 'A', long)]
 	address: Option<String>,
@@ -18,7 +18,7 @@ pub struct Start {
 	password: Option<String>,
 }
 
-impl Start {
+impl Serve {
 	pub fn main(self) -> Result<()> {
 		self.start().desc("Failed to start server")
 	}
