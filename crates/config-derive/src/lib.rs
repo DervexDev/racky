@@ -9,6 +9,7 @@ pub fn derive_val(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
 
 	let fields = util::get_fields(&input.data);
+	let value = util::get_value_name(&input.ident);
 
 	let (variants, fmts, impls) = {
 		let mut defined = vec![];
@@ -39,13 +40,13 @@ pub fn derive_val(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 			});
 
 			fmts.extend(quote! {
-				Value::#variant(v) => write!(f, "{}", v.to_string()),
+				#value::#variant(v) => write!(f, "{}", v.to_string()),
 			});
 
 			impls.extend(quote!(
-				impl From<#ty> for Value {
+				impl From<#ty> for #value {
 					fn from(value: #ty) -> Self {
-						Value::#variant(value)
+						#value::#variant(value)
 					}
 				}
 			))
@@ -57,11 +58,11 @@ pub fn derive_val(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	let expanded = quote! {
 		#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 		#[serde(untagged)]
-		pub enum Value {
+		pub enum #value {
 			#variants
 		}
 
-		impl std::fmt::Display for Value {
+		impl std::fmt::Display for #value {
 			fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 				match self {
 					#fmts
@@ -81,7 +82,9 @@ pub fn derive_iter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 	let name = &input.ident;
 	let data = input.data;
+
 	let fields = util::get_fields(&data);
+	let value = util::get_value_name(&input.ident);
 
 	let arms = {
 		let mut arms = TokenStream::new();
@@ -104,7 +107,7 @@ pub fn derive_iter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 		}
 
 		impl<'a> Iterator for IntoIter<'a> {
-			type Item = (&'a str, Value);
+			type Item = (&'a str, #value);
 
 			fn next(&mut self) -> Option<Self::Item> {
 				let index = match self.index {
@@ -119,7 +122,7 @@ pub fn derive_iter(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 		}
 
 		impl<'a> IntoIterator for &'a #name {
-			type Item = (&'a str, Value);
+			type Item = (&'a str, #value);
 			type IntoIter = IntoIter<'a>;
 
 			fn into_iter(self) -> Self::IntoIter {
@@ -140,17 +143,19 @@ pub fn derive_get(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 	let name = &input.ident;
 	let data = input.data;
+
 	let fields = util::get_fields(&data);
+	let value = util::get_value_name(&input.ident);
 
 	let arms = {
 		let mut arms = TokenStream::new();
 
 		for field in fields {
 			let ident = field.ident.as_ref().unwrap();
-			let index = ident.to_string();
+			let key = ident.to_string();
 
 			arms.extend(quote! {
-				#index => Some(self.#ident.clone().into()),
+				#key => Some(self.#ident.clone().into()),
 			});
 		}
 
@@ -159,8 +164,8 @@ pub fn derive_get(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 	let expanded = quote! {
 		impl #name {
-			pub fn get(&self, index: &str) -> Option<Value> {
-				match index {
+			pub fn get(&self, key: &str) -> Option<#value> {
+				match key {
 					#arms
 					_ => None,
 				}
@@ -184,10 +189,10 @@ pub fn derive_set(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 		for field in fields {
 			let ident = field.ident.as_ref().unwrap();
-			let index = ident.to_string();
+			let key = ident.to_string();
 
 			arms.extend(quote! {
-				#index => self.#ident = value.parse()?,
+				#key => self.#ident = value.parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?,
 			});
 		}
 
@@ -196,10 +201,10 @@ pub fn derive_set(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 	let expanded = quote! {
 		impl #name {
-			pub fn set(&mut self, index: &str, value: &str) -> Result<(), Box<dyn std::error::Error>> {
-				match index {
+			pub fn set(&mut self, key: &str, value: &str) -> std::io::Result<()> {
+				match key {
 					#arms
-					_ => return Err(format!("Field: {} does not exist", index).into()),
+					_ => return Err(std::io::Error::new(std::io::ErrorKind::NotFound, format!("Field `{}` does not exist", key))),
 				}
 
 				Ok(())

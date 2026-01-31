@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, TokenTree};
-use quote::ToTokens;
+use quote::{format_ident, ToTokens};
 use syn::{Data, Field, Fields, Type};
 
 pub fn get_fields(data: &Data) -> Vec<&Field> {
@@ -45,4 +45,8 @@ pub fn get_type_ident(ty: &Type) -> Option<Ident> {
 	}
 
 	None
+}
+
+pub fn get_value_name(name: &Ident) -> Ident {
+	format_ident!("{}Value", name.to_string())
 }
