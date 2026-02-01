@@ -1,9 +1,9 @@
 use anyhow::{Result, bail};
 use clap::Parser;
 
-use crate::{client::Client, ext::ResultExt, racky_info, servers};
+use crate::{client::Client, ext::ResultExt, logger, racky_info, servers};
 
-/// Reboot the server
+/// Reboot the server (hardware)
 #[derive(Parser)]
 pub struct Reboot {
 	/// Target server alias
@@ -13,7 +13,12 @@ pub struct Reboot {
 
 impl Reboot {
 	pub fn main(self) -> Result<()> {
-		self.reboot().desc("Failed to reboot server")
+		logger::prompt(
+			"Are you sure you want to reboot the server? This will reboot your actual hardware and you will need to wait until it boots up before you can use Racky again!",
+			true,
+		);
+
+		self.reboot().desc("Failed to reboot the server")
 	}
 
 	fn reboot(self) -> Result<()> {

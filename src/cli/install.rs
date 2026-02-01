@@ -9,7 +9,7 @@ use crate::{
 	config::Config,
 	dirs,
 	ext::{PathExt, ResultExt},
-	logger, racky_error, racky_info, racky_warn,
+	logger, racky_error, racky_info, racky_warn, util,
 };
 
 const SYSTEMD_SERVICE: &str = "[Unit]\n\
@@ -18,7 +18,7 @@ After=network.target\n\
 \n\
 [Service]\n\
 ExecStart=/home/$1/.racky/bin/racky server start -vvvv -y\n\
-Environment=HOME=/home/$1\n\
+Environment=HOME=/home/$1 SUDO_USER=$1\n\
 Restart=always\n\
 \n\
 [Install]\n\
@@ -90,11 +90,7 @@ impl Install {
 			bail!("Racky server is currently only supported on Linux!");
 		}
 
-		let user = env::var("SUDO_USER")
-			.or_else(|_| env::var("USER"))
-			.desc("Failed to get current user")?;
-
-		let service_name = format!("racky-{user}");
+		let service_name = util::get_service();
 		let service_dir = Path::new("/etc/systemd/system");
 		let service_path = service_dir.join(format!("{service_name}.service"));
 
@@ -103,7 +99,8 @@ impl Install {
 		}
 
 		if !service_path.exists() || self.force {
-			fs::write(&service_path, SYSTEMD_SERVICE.replace("$1", &user)).desc("Failed to create service file")?;
+			fs::write(&service_path, SYSTEMD_SERVICE.replace("$1", &util::get_user()?))
+				.desc("Failed to create service file")?;
 		}
 
 		match Command::new("systemctl").args(["enable", &service_name]).run() {

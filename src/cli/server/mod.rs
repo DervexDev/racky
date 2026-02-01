@@ -5,7 +5,10 @@ mod add;
 mod list;
 mod reboot;
 mod remove;
+mod restart;
+mod shutdown;
 mod start;
+mod stop;
 mod update;
 
 /// Manage and configure Racky servers
@@ -22,7 +25,10 @@ impl Server {
 			ServerCommand::List(command) => command.main(),
 			ServerCommand::Reboot(command) => command.main(),
 			ServerCommand::Remove(command) => command.main(),
+			ServerCommand::Restart(command) => command.main(),
+			ServerCommand::Shutdown(command) => command.main(),
 			ServerCommand::Start(command) => command.main(),
+			ServerCommand::Stop(command) => command.main(),
 			ServerCommand::Update(command) => command.main(),
 		}
 	}
@@ -34,6 +40,9 @@ enum ServerCommand {
 	List(list::List),
 	Reboot(reboot::Reboot),
 	Remove(remove::Remove),
+	Restart(restart::Restart),
+	Shutdown(shutdown::Shutdown),
 	Start(start::Start),
+	Stop(stop::Stop),
 	Update(update::Update),
 }

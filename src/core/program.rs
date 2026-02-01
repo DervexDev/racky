@@ -238,9 +238,9 @@ impl Program {
 		// Kill both main and child processes
 		#[cfg(windows)]
 		Command::new("taskkill")
-			.arg("/F")
-			.arg("/T")
-			.args(["/PID", &pid])
+			.arg("/f")
+			.arg("/t")
+			.args(["/pid", &pid])
 			.output()
 			.ok();
 

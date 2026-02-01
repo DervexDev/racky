@@ -81,7 +81,7 @@ impl Client {
 			request = request.header("Authorization", password);
 		}
 
-		let response = request.send().desc("Failed to connect to server")?;
+		let response = request.send().desc("Failed to connect to the server")?;
 
 		Ok((response.status(), response.text().unwrap_or_default()))
 	}

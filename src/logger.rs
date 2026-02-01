@@ -109,12 +109,10 @@ pub fn prompt(prompt: &str, default: bool) -> bool {
 		_ => PromptTheme::no_color(),
 	};
 
-	let result = Confirm::with_theme(&theme)
+	Confirm::with_theme(&theme)
 		.with_prompt(prompt)
-		.default(default)
-		.interact();
-
-	result.unwrap_or(default)
+		.interact()
+		.unwrap_or(default)
 }
 
 pub fn capture_output(process: &mut Child, path: &Path) {

@@ -29,7 +29,7 @@ pub struct Update {
 
 impl Update {
 	pub fn main(self) -> Result<()> {
-		self.update().desc("Failed to update server")
+		self.update().desc("Failed to update the server")
 	}
 
 	fn update(self) -> Result<()> {

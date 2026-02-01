@@ -39,6 +39,9 @@ impl Web {
 			.route("/", get(root::main))
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
 			.route("/server/reboot", post(server::reboot::main))
+			.route("/server/restart", post(server::restart::main))
+			.route("/server/shutdown", post(server::shutdown::main))
+			.route("/server/stop", post(server::stop::main))
 			.layer(from_fn_with_state(password, middleware::auth::main))
 			.layer(from_fn(middleware::agent::main))
 			.with_state(core);

@@ -1,8 +1,14 @@
-use std::{env, time::SystemTime};
+use std::{
+	env, thread,
+	time::{Duration, SystemTime},
+};
 
+use anyhow::Result;
 use env_logger::WriteStyle;
 use jiff::Timestamp;
 use log::LevelFilter;
+
+use crate::ext::ResultExt;
 
 /// Returns the `RUST_VERBOSE` environment variable
 pub fn env_verbosity() -> LevelFilter {
@@ -45,4 +51,29 @@ pub fn env_yes() -> bool {
 /// Returns the current timestamp in the `YYYY-MM-DD HH:MM:SS` format
 pub fn timestamp() -> String {
 	format!("{:.0}", Timestamp::try_from(SystemTime::now()).unwrap_or_default())
+}
+
+/// Returns the current user name
+pub fn get_user() -> Result<String> {
+	#[cfg(unix)]
+	let result = env::var("SUDO_USER").or_else(|_| env::var("USER"));
+	#[cfg(windows)]
+	let result = env::var("USERNAME");
+
+	result.desc("Failed to get current user")
+}
+
+/// Returns the service name for the current user
+pub fn get_service() -> String {
+	get_user()
+		.map(|user| format!("racky-{user}"))
+		.unwrap_or_else(|_| String::from("racky"))
+}
+
+/// Delays the execution of a function for a given number of seconds
+pub fn delay<F: FnOnce() + Send + 'static>(seconds: u64, f: F) {
+	thread::spawn(move || {
+		thread::sleep(Duration::from_secs(seconds));
+		f();
+	});
 }

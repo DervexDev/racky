@@ -14,7 +14,7 @@ pub struct Remove {
 
 impl Remove {
 	pub fn main(self) -> Result<()> {
-		self.remove().desc("Failed to remove server")
+		self.remove().desc("Failed to remove the server")
 	}
 
 	fn remove(self) -> Result<()> {

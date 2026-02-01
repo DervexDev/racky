@@ -20,7 +20,7 @@ pub struct Start {
 
 impl Start {
 	pub fn main(self) -> Result<()> {
-		self.start().desc("Failed to start server")
+		self.start().desc("Failed to start the server")
 	}
 
 	pub fn start(self) -> Result<()> {

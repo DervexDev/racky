@@ -28,7 +28,7 @@ pub struct Add {
 
 impl Add {
 	pub fn main(self) -> Result<()> {
-		self.add().desc("Failed to add server")
+		self.add().desc("Failed to add a new server")
 	}
 
 	fn add(self) -> Result<()> {
