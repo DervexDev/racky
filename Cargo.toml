@@ -1,7 +1,7 @@
 [package]
 name = "racky"
 version = "0.1.0"
-description = "A simple tool to manage your home server with ease"
+description = "A simple tool to manage your home server(s) with ease"
 license = "Apache-2.0"
 authors = ["Dervex"]
 edition = "2024"
@@ -28,6 +28,7 @@ lazy_static = "1.5.0"
 log = "0.4.29"
 optfield = "0.4.0"
 path-clean = "1.0.1"
+regex = "1.12.2"
 reqwest = { version = "0.13.1", default-features = false, features = [
     "blocking",
     "multipart",

@@ -2,7 +2,7 @@ use anyhow::{Result, bail};
 use clap::Parser;
 use colored::Colorize;
 
-use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, server::Server};
+use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, web::Web};
 
 /// Start actual Racky server (used by systemd service)
 #[derive(Parser)]
@@ -34,9 +34,9 @@ impl Start {
 			.filter(|p| !p.is_empty());
 
 		let core = Core::new();
-		let server = Server::new(core.clone(), &address, port, password);
+		let web = Web::new(core.clone(), &address, port, password);
 
-		if !server.is_port_free() {
+		if !web.is_port_free() {
 			bail!("Port {} is already in use", port.to_string().bold());
 		}
 
@@ -61,6 +61,6 @@ impl Start {
 		);
 
 		drop(core);
-		server.start().desc("Could not start the serve session")
+		web.start().desc("Could not start the serve session")
 	}
 }

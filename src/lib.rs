@@ -1,15 +1,17 @@
 #![allow(clippy::new_without_default)]
 
 pub mod cli;
+pub mod client;
+pub mod command;
 pub mod config;
 pub mod constants;
 pub mod core;
 pub mod dirs;
 pub mod ext;
 pub mod logger;
-pub mod server;
 pub mod servers;
 pub mod util;
+pub mod web;
 pub mod zip;
 
 /// `RwLock::read` shortcut

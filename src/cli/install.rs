@@ -1,9 +1,11 @@
-use std::{env, fs, process::Command};
+use std::{env, fs, path::Path};
 
 use anyhow::{Result, bail};
 use clap::Parser;
+use log::trace;
 
 use crate::{
+	command::Command,
 	config::Config,
 	dirs,
 	ext::{PathExt, ResultExt},
@@ -11,7 +13,7 @@ use crate::{
 };
 
 const SYSTEMD_SERVICE: &str = "[Unit]\n\
-Description=Racky\n\
+Description=Racky ($1)\n\
 After=network.target\n\
 \n\
 [Service]\n\
@@ -25,16 +27,19 @@ WantedBy=default.target\n";
 /// Install and/or verify Racky installation
 #[derive(Parser)]
 pub struct Install {
-	/// Whether to install the server side of Racky
+	/// Install the server side of Racky (requires sudo)
 	#[arg(short, long)]
 	server: bool,
+	/// Rewrite all relevant files even if they already exist
+	#[arg(short, long)]
+	force: bool,
 }
 
 impl Install {
 	pub fn main(self) -> Result<()> {
 		let side = if self.server { "server" } else { "client" };
 
-		self.install().desc("Failed to install Racky {side}")?;
+		self.install().with_desc(|| format!("Failed to install Racky {side}"))?;
 		racky_info!("Racky {side} has been installed successfully!");
 
 		Ok(())
@@ -71,7 +76,7 @@ impl Install {
 		#[cfg(unix)]
 		let exe_path = bin_dir.join("racky");
 
-		if !exe_path.exists() {
+		if !exe_path.exists() || self.force {
 			fs::copy(env::current_exe()?, &exe_path).desc("Failed to copy Racky executable to bin directory")?;
 
 			if logger::prompt("Installation completed! Do you want to remove this executable?", true) {
@@ -85,27 +90,38 @@ impl Install {
 			bail!("Racky server is currently only supported on Linux!");
 		}
 
-		let service_dir = dirs::home().join(".config/systemd/user");
-		let service_path = service_dir.join("racky.service");
+		let user = env::var("SUDO_USER")
+			.or_else(|_| env::var("USER"))
+			.desc("Failed to get current user")?;
+
+		let service_name = format!("racky-{user}");
+		let service_dir = Path::new("/etc/systemd/system");
+		let service_path = service_dir.join(format!("{service_name}.service"));
 
 		if !service_dir.exists() {
-			fs::create_dir_all(&service_dir).desc("Failed to create service directory")?;
+			fs::create_dir_all(service_dir).desc("Failed to create service directory")?;
 		}
 
-		if !service_path.exists() {
-			fs::write(
-				&service_path,
-				SYSTEMD_SERVICE.replace("$1", &env::var("USER").desc("Failed to get current user")?),
-			)
-			.desc("Failed to create service file")?;
+		if !service_path.exists() || self.force {
+			fs::write(&service_path, SYSTEMD_SERVICE.replace("$1", &user)).desc("Failed to create service file")?;
 		}
 
-		if let Err(err) = Command::new("systemctl").args(["--user", "enable", "racky"]).spawn() {
-			racky_error!("Failed to enable Racky service: {err}! Try running `systemctl --user enable racky` manually");
+		match Command::new("systemctl").args(["enable", &service_name]).run() {
+			Ok(output) => trace!("Racky service enabled successfully: {output}"),
+			Err(err) => {
+				racky_error!(
+					"Failed to enable Racky service: {err}! Try running `systemctl enable {service_name}` manually"
+				)
+			}
 		}
 
-		if let Err(err) = Command::new("systemctl").args(["--user", "start", "racky"]).spawn() {
-			racky_error!("Failed to start Racky service: {err}! Try running `systemctl --user start racky` manually");
+		match Command::new("systemctl").args(["start", &service_name]).run() {
+			Ok(output) => trace!("Racky service started successfully: {output}"),
+			Err(err) => {
+				racky_error!(
+					"Failed to start Racky service: {err}! Try running `systemctl start {service_name}` manually"
+				)
+			}
 		}
 
 		Ok(())

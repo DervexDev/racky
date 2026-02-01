@@ -11,7 +11,7 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use config_derive::{Get, Iter, Set, Val};
-use log::{debug, error, trace, warn};
+use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use toml::Value;
 
@@ -97,7 +97,7 @@ impl Program {
 			}
 		}
 
-		debug!("{} config loaded successfully", self.name);
+		info!("{} config loaded successfully", self.name);
 	}
 
 	pub fn save_config(self: &ProgramPtr) -> Result<()> {
@@ -113,7 +113,7 @@ impl Program {
 		wlock!(self.state)
 			.config
 			.set(key, value)
-			.with_desc(|| format!("Failed to set `{}` to `{}`", key, value))?;
+			.with_desc(|| format!("Failed to set `{key}` to `{value}`"))?;
 
 		Ok(())
 	}

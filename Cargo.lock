@@ -1613,6 +1613,7 @@ dependencies = [
  "log",
  "optfield",
  "path-clean",
+ "regex",
  "reqwest",
  "self-replace",
  "serde",

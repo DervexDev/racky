@@ -3,13 +3,9 @@ use std::path::PathBuf;
 use anyhow::{Result, bail};
 use clap::Parser;
 use colored::Colorize;
-use reqwest::blocking::{
-	Client,
-	multipart::{Form, Part},
-};
 
 use crate::{
-	constants::USER_AGENT,
+	client::Client,
 	core::program::{self},
 	ext::{PathExt, ResultExt},
 	racky_info, servers, zip,
@@ -24,7 +20,7 @@ pub struct Add {
 	/// Target server alias
 	#[arg(short, long)]
 	server: Option<String>,
-	/// Whether to automatically start the program
+	/// Automatically start the program
 	#[arg(short, long)]
 	auto_start: bool,
 }
@@ -41,33 +37,16 @@ impl Add {
 			bail!("Path {} does not point to a valid program", path.to_string().bold());
 		}
 
-		let server = servers::get(self.server)?;
-		let zip = zip::compress(&path).desc("Failed to zip program")?;
+		let (status, body) = Client::new(&servers::get(self.server)?)
+			.file("file", zip::compress(&path).desc("Failed to zip program")?)
+			.text("auto_start", self.auto_start)
+			.post("program/add")?;
 
-		let mut request = Client::builder()
-			.build()
-			.desc("Failed to create HTTP client")?
-			.post(format!("http://{}:{}/program/add", server.address, server.port))
-			.header("User-Agent", USER_AGENT)
-			.multipart(
-				Form::new()
-					.part("file", Part::bytes(zip))
-					.text("auto_start", self.auto_start.to_string()),
-			);
-
-		if !server.password.is_empty() {
-			request = request.header("Authorization", &server.password);
-		}
-
-		let response = request.send().desc("Failed to connect to server")?;
-		let status = response.status();
-		let body = response.text().unwrap_or_default();
-
-		if !status.is_success() {
+		if status.is_success() {
+			racky_info!("{body}");
+		} else {
 			bail!("{body} ({status})");
 		}
-
-		racky_info!("{body}");
 
 		Ok(())
 	}

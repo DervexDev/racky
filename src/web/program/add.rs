@@ -39,7 +39,7 @@ pub async fn main(
 	}
 
 	let Some(zip) = zip else {
-		return response!(BAD_REQUEST, "missing multipart field `file` (program file)");
+		return response!(BAD_REQUEST, "missing multipart field `file` (program)");
 	};
 
 	let path = dirs::bin();

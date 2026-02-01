@@ -15,9 +15,16 @@ use dialoguer::{
 	theme::Theme,
 };
 use env_logger::{Builder, WriteStyle};
+use lazy_static::lazy_static;
 use log::{Level, LevelFilter};
+use regex::Regex;
 
 use crate::{config::Config, dirs, ext::PathExt, util};
+
+lazy_static! {
+	static ref TIMESTAMP_PATTERN: Regex =
+		Regex::new(r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[\+-]\d{2}:\d{2})?\]").unwrap();
+}
 
 // These Racky logs ignore verbosity level, except for `Off`
 #[macro_export]
@@ -190,8 +197,13 @@ fn log(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) ->
 		}
 	};
 
-	let message = format!("[{}] {}\n", util::timestamp(), strip_ansi_escapes::strip_str(message));
-	write!(current_file, "{}", message)?;
+	let mut message = strip_ansi_escapes::strip_str(message);
+
+	if !TIMESTAMP_PATTERN.is_match_at(&message, 0) {
+		message = format!("[{}] {}", util::timestamp(), message);
+	}
+
+	writeln!(current_file, "{}", message)?;
 	current_file.flush()?;
 
 	*size += message.len();

@@ -12,6 +12,7 @@ use crate::{constants::BODY_SIZE_LIMIT, core::CorePtr};
 mod middleware;
 mod program;
 mod root;
+mod server;
 
 #[macro_export]
 macro_rules! response {
@@ -26,17 +27,18 @@ macro_rules! response {
 	};
 }
 
-pub struct Server {
+pub struct Web {
 	router: Router,
 	address: String,
 	port: u16,
 }
 
-impl Server {
+impl Web {
 	pub fn new(core: CorePtr, address: &str, port: u16, password: Option<String>) -> Self {
 		let router = Router::new()
 			.route("/", get(root::main))
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
+			.route("/server/reboot", post(server::reboot::main))
 			.layer(from_fn_with_state(password, middleware::auth::main))
 			.layer(from_fn(middleware::agent::main))
 			.with_state(core);
