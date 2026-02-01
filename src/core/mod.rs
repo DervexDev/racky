@@ -1,48 +1,40 @@
-use std::{collections::HashMap, fs};
+use std::{
+	collections::HashMap,
+	fs,
+	sync::{Arc, RwLock},
+};
 
 use anyhow::Result;
 use log::error;
 
 use crate::{
-	core::program::{ArcProgram, Program},
+	core::program::{Program, ProgramPtr},
 	dirs,
-	ext::PathExt,
+	ext::{PathExt, ResultExt},
+	racky_error, racky_warn, wlock,
 };
 
 pub mod program;
 
+pub type CorePtr = Arc<Core>;
+
+#[derive(Debug, Default)]
 pub struct Core {
-	programs: HashMap<String, ArcProgram>,
+	programs: RwLock<HashMap<String, ProgramPtr>>,
 }
 
 impl Core {
-	pub fn new() -> Self {
-		Self {
-			programs: HashMap::new(),
-		}
+	pub fn new() -> CorePtr {
+		Arc::new(Self::default())
 	}
 
-	pub fn start(&mut self) -> Result<(usize, usize)> {
-		let programs = self.get_autostart_programs()?;
-
-		let total = programs.len();
+	pub fn start(self: &CorePtr) -> Result<(usize, usize)> {
+		let mut total = 0;
 		let mut successful = 0;
 
-		for program in programs {
-			if program.start() {
-				successful += 1;
-			}
+		let mut programs = wlock!(self.programs);
 
-			self.programs.insert(program.name.clone(), program);
-		}
-
-		Ok((successful, total))
-	}
-
-	fn get_autostart_programs(&self) -> Result<Vec<ArcProgram>> {
-		let mut programs = Vec::new();
-
-		for entry in fs::read_dir(dirs::config())? {
+		for entry in fs::read_dir(dirs::config()).desc("Failed to read config directory")? {
 			if let Err(err) = entry {
 				error!("Failed to read entry: {err}");
 				continue;
@@ -55,13 +47,44 @@ impl Core {
 				continue;
 			}
 
-			if let Some(program) = Program::new(stem)
-				&& program.config.auto_start
-			{
-				programs.push(program);
+			let program = Program::new(stem);
+			program.load_config();
+
+			if !program.config().auto_start {
+				continue;
 			}
+
+			total += 1;
+
+			if !program.is_valid() {
+				racky_warn!("Program {stem} has a config file but no executable");
+				continue;
+			}
+
+			if program.start() {
+				successful += 1;
+			}
+
+			programs.insert(stem.to_owned(), program);
 		}
 
-		Ok(programs)
+		Ok((successful, total))
+	}
+
+	pub fn start_program(self: &CorePtr, program: &ProgramPtr) -> bool {
+		if !program.is_valid() {
+			racky_error!("Program {} does not exist", program.name());
+			return false;
+		}
+
+		let result = program.start();
+		wlock!(self.programs).insert(program.name().to_owned(), program.to_owned());
+
+		result
+	}
+
+	pub fn stop_program(self: &CorePtr, program: &ProgramPtr) -> bool {
+		wlock!(self.programs).remove(program.name());
+		program.stop()
 	}
 }

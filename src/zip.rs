@@ -75,3 +75,13 @@ pub fn decompress(data: &[u8], target: &Path) -> Result<()> {
 
 	Ok(())
 }
+
+pub fn get_root_name(data: &[u8]) -> Result<String> {
+	ZipArchive::new(Cursor::new(data))
+		.desc("Unable to open archive")?
+		.by_index(0)
+		.desc("Unable to open file root in archive")?
+		.enclosed_name()
+		.context("Unable to extract root file because it has an invalid path")
+		.map(|p| p.get_stem().to_owned())
+}

@@ -4,7 +4,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use path_clean::PathClean;
 
 /// Collection of extension methods for `Path`
@@ -90,9 +90,7 @@ where
 	{
 		match self {
 			Ok(ok) => Ok(ok),
-			Err(err) => {
-				bail!("{desc}: {err}");
-			}
+			Err(err) => bail!("{desc}: {err}"),
 		}
 	}
 
@@ -103,9 +101,7 @@ where
 	{
 		match self {
 			Ok(ok) => Ok(ok),
-			Err(err) => {
-				bail!("{}: {err}", desc());
-			}
+			Err(err) => bail!("{}: {err}", desc()),
 		}
 	}
 }

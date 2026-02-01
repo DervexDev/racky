@@ -19,20 +19,26 @@ use log::{Level, LevelFilter};
 
 use crate::{config::Config, dirs, ext::PathExt, util};
 
-// These Racky logs ignore verbosity level, aside of `Off`
+// These Racky logs ignore verbosity level, except for `Off`
 #[macro_export]
 macro_rules! racky_error {
-    ($($arg:tt)+) => (log::log!(target: "racky_log", log::Level::Error, $($arg)+))
+    ($($arg:tt)+) => {
+		log::log!(target: "racky_log", log::Level::Error, $($arg)+)
+	};
 }
 
 #[macro_export]
 macro_rules! racky_warn {
-    ($($arg:tt)+) => (log::log!(target: "racky_log", log::Level::Warn, $($arg)+))
+    ($($arg:tt)+) => {
+		log::log!(target: "racky_log", log::Level::Warn, $($arg)+)
+	};
 }
 
 #[macro_export]
 macro_rules! racky_info {
-    ($($arg:tt)+) => (log::log!(target: "racky_log", log::Level::Info, $($arg)+))
+    ($($arg:tt)+) => {
+		log::log!(target: "racky_log", log::Level::Info, $($arg)+)
+	};
 }
 
 pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
@@ -292,9 +298,7 @@ impl Theme for PromptTheme {
 				"no" => write!(f, "{} {}", &self.prompt_suffix, self.no_style.apply_to(selection)),
 				_ => write!(f, "{} {}", &self.prompt_suffix, self.none_style.apply_to(selection)),
 			},
-			None => {
-				write!(f, "{} {}", &self.prompt_suffix, self.none_style.apply_to("none"))
-			}
+			None => write!(f, "{} {}", &self.prompt_suffix, self.none_style.apply_to("none")),
 		}
 	}
 }

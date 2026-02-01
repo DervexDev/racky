@@ -1,17 +1,30 @@
-use std::{io::Result, net::TcpListener, sync::Arc};
+use std::{io::Result, net::TcpListener};
 
 use axum::{
 	Router,
-	middleware::from_fn_with_state,
+	middleware::{from_fn, from_fn_with_state},
 	routing::{get, post},
 };
 use tokio::net;
 
-use crate::{constants::BODY_SIZE_LIMIT, core::Core};
+use crate::{constants::BODY_SIZE_LIMIT, core::CorePtr};
 
 mod middleware;
 mod program;
 mod root;
+
+#[macro_export]
+macro_rules! response {
+	($status:ident) => {
+		axum::http::StatusCode::$status.into_response()
+	};
+	($status:ident, $fmt:literal $(, $arg:expr)* $(,)?) => {
+		(axum::http::StatusCode::$status, format!($fmt $(, $arg)*)).into_response()
+	};
+	($status:ident, $body:expr) => {
+		(axum::http::StatusCode::$status, $body).into_response()
+	};
+}
 
 pub struct Server {
 	router: Router,
@@ -20,12 +33,13 @@ pub struct Server {
 }
 
 impl Server {
-	pub fn new(core: Core, address: &str, port: u16, password: Option<String>) -> Self {
+	pub fn new(core: CorePtr, address: &str, port: u16, password: Option<String>) -> Self {
 		let router = Router::new()
 			.route("/", get(root::main))
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
 			.layer(from_fn_with_state(password, middleware::auth::main))
-			.with_state(Arc::new(core));
+			.layer(from_fn(middleware::agent::main))
+			.with_state(core);
 
 		Self {
 			router,

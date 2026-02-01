@@ -9,7 +9,8 @@ use reqwest::blocking::{
 };
 
 use crate::{
-	core::program,
+	constants::USER_AGENT,
+	core::program::{self},
 	ext::{PathExt, ResultExt},
 	racky_info, servers, zip,
 };
@@ -47,6 +48,7 @@ impl Add {
 			.build()
 			.desc("Failed to create HTTP client")?
 			.post(format!("http://{}:{}/program/add", server.address, server.port))
+			.header("User-Agent", USER_AGENT)
 			.multipart(
 				Form::new()
 					.part("file", Part::bytes(zip))
@@ -62,14 +64,10 @@ impl Add {
 		let body = response.text().unwrap_or_default();
 
 		if !status.is_success() {
-			bail!(
-				"Server responded {}: {}",
-				status.as_str().bold(),
-				if body.is_empty() { "no body" } else { body.trim() }
-			);
+			bail!("{body} ({status})");
 		}
 
-		racky_info!("Uploaded successfully: {}", body.trim());
+		racky_info!("{body}");
 
 		Ok(())
 	}

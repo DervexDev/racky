@@ -1,7 +1,6 @@
 use std::{
 	fmt::Debug,
 	fs,
-	path::Path,
 	sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
@@ -10,7 +9,7 @@ use config_derive::{Get, Iter, Set, Val};
 use documented::DocumentedFields;
 use lazy_static::lazy_static;
 use optfield::optfield;
-use serde::{Deserialize, Serialize, Serializer, ser::SerializeMap};
+use serde::{Deserialize, Serialize};
 use toml;
 
 use crate::{dirs, logger::Table};
@@ -20,7 +19,7 @@ lazy_static! {
 }
 
 #[optfield(OptConfig, merge_fn, attrs = (derive(Deserialize)))]
-#[derive(Debug, Clone, Deserialize, DocumentedFields, Val, Iter, Get, Set)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DocumentedFields, Val, Iter, Get, Set)]
 pub struct Config {
 	/// Default server address
 	pub address: String,
@@ -69,8 +68,8 @@ impl Config {
 		Ok(())
 	}
 
-	pub fn save(&self, path: &Path) -> Result<()> {
-		fs::write(path, toml::to_string(self)?)?;
+	pub fn save(&self) -> Result<()> {
+		fs::write(dirs::config().join("racky.toml"), toml::to_string_pretty(self)?)?;
 		Ok(())
 	}
 
@@ -107,60 +106,5 @@ impl Config {
 		}
 
 		table
-	}
-}
-
-impl PartialEq for Config {
-	fn eq(&self, other: &Self) -> bool {
-		for (k, v) in self {
-			if other.get(k) != Some(v) {
-				return false;
-			}
-		}
-
-		true
-	}
-}
-
-impl Serialize for Config {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
-		let mut map = serializer.serialize_map(None)?;
-		let defaults = Self::default();
-
-		for (k, v) in self {
-			if v == defaults.get(k).unwrap() {
-				continue;
-			}
-
-			map.serialize_entry(&k, &v)?;
-		}
-
-		map.end()
-	}
-}
-
-#[derive(Debug, Serialize, Deserialize, Set)]
-pub struct ProgramConfig {
-	/// Whether to automatically start the program when the Racky server starts
-	pub auto_start: bool,
-	/// Whether to automatically restart the program after it exits
-	pub auto_restart: bool,
-	/// The delay in seconds before restarting the program after it exits
-	pub restart_delay: u64,
-	/// The maximum number of restart attempts after the program exits with an error code
-	pub restart_attempts: u64,
-}
-
-impl Default for ProgramConfig {
-	fn default() -> Self {
-		Self {
-			auto_start: false,
-			auto_restart: true,
-			restart_delay: 3,
-			restart_attempts: 5,
-		}
 	}
 }

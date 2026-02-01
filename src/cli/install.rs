@@ -4,6 +4,7 @@ use anyhow::{Result, bail};
 use clap::Parser;
 
 use crate::{
+	config::Config,
 	dirs,
 	ext::{PathExt, ResultExt},
 	logger, racky_error, racky_info, racky_warn,
@@ -14,7 +15,7 @@ Description=Racky\n\
 After=network.target\n\
 \n\
 [Service]\n\
-ExecStart=/home/$1/.racky/bin/racky start --yes\n\
+ExecStart=/home/$1/.racky/bin/racky server start -vvvv -y\n\
 Environment=HOME=/home/$1\n\
 Restart=always\n\
 \n\
@@ -60,14 +61,14 @@ impl Install {
 		let config_path = config_dir.join("racky.toml");
 
 		if !config_path.exists()
-			&& let Err(err) = fs::write(&config_path, "")
+			&& let Err(err) = Config::default().save()
 		{
 			racky_warn!("Failed to create config file at {config_path:?}: {err}");
 		}
 
-		#[cfg(target_os = "windows")]
+		#[cfg(windows)]
 		let exe_path = bin_dir.join("racky.exe");
-		#[cfg(not(target_os = "windows"))]
+		#[cfg(unix)]
 		let exe_path = bin_dir.join("racky");
 
 		if !exe_path.exists() {

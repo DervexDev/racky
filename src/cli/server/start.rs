@@ -4,9 +4,9 @@ use colored::Colorize;
 
 use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, server::Server};
 
-/// Serve actual Racky server (used by systemd service)
+/// Start actual Racky server (used by systemd service)
 #[derive(Parser)]
-pub struct Serve {
+pub struct Start {
 	/// Server address
 	#[arg(short = 'A', long)]
 	address: Option<String>,
@@ -18,7 +18,7 @@ pub struct Serve {
 	password: Option<String>,
 }
 
-impl Serve {
+impl Start {
 	pub fn main(self) -> Result<()> {
 		self.start().desc("Failed to start server")
 	}
@@ -33,9 +33,14 @@ impl Serve {
 			.or(Some(config.password.clone()))
 			.filter(|p| !p.is_empty());
 
-		let mut core = Core::new();
-		let result = core.start().desc("Failed to start core")?;
+		let core = Core::new();
+		let server = Server::new(core.clone(), &address, port, password);
 
+		if !server.is_port_free() {
+			bail!("Port {} is already in use", port.to_string().bold());
+		}
+
+		let result = core.start().desc("Failed to start core")?;
 		let message = format!(
 			"Started {} of {} autostart programs",
 			result.0.to_string().bold(),
@@ -50,17 +55,12 @@ impl Serve {
 			racky_warn!("{message}");
 		}
 
-		let server = Server::new(core, &address, port, password);
-
-		if !server.is_port_free() {
-			bail!("Port {} is already in use", port.to_string().bold());
-		}
-
 		racky_info!(
 			"Racky server is running on {}",
 			format!("http://{address}:{port}").bold()
 		);
 
+		drop(core);
 		server.start().desc("Could not start the serve session")
 	}
 }

@@ -11,3 +11,19 @@ pub mod server;
 pub mod servers;
 pub mod util;
 pub mod zip;
+
+/// `RwLock::read` shortcut
+#[macro_export]
+macro_rules! rlock {
+	($lock:expr) => {
+		$lock.read().expect("Tried to read RwLock that panicked!")
+	};
+}
+
+/// `RwLock::write` shortcut
+#[macro_export]
+macro_rules! wlock {
+	($lock:expr) => {
+		$lock.write().expect("Tried to write RwLock that panicked!")
+	};
+}
