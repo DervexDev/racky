@@ -2,23 +2,26 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod add;
+mod remove;
 
 /// Run and setup programs on Racky servers
 #[derive(Parser)]
 pub struct Program {
 	#[command(subcommand)]
-	command: ServerCommand,
+	command: Command,
 }
 
 impl Program {
 	pub fn main(self) -> Result<()> {
 		match self.command {
-			ServerCommand::Add(command) => command.main(),
+			Command::Add(command) => command.main(),
+			Command::Remove(command) => command.main(),
 		}
 	}
 }
 
 #[derive(Subcommand)]
-enum ServerCommand {
+enum Command {
 	Add(add::Add),
+	Remove(remove::Remove),
 }

@@ -107,7 +107,7 @@ impl Install {
 			Ok(output) => trace!("Racky service enabled successfully: {output}"),
 			Err(err) => {
 				racky_error!(
-					"Failed to enable Racky service: {err}! Try running `systemctl enable {service_name}` manually"
+					"Failed to enable Racky service: {err}! Try running `sudo systemctl enable {service_name}` manually"
 				)
 			}
 		}
@@ -116,7 +116,7 @@ impl Install {
 			Ok(output) => trace!("Racky service started successfully: {output}"),
 			Err(err) => {
 				racky_error!(
-					"Failed to start Racky service: {err}! Try running `systemctl start {service_name}` manually"
+					"Failed to start Racky service: {err}! Try running `sudo systemctl start {service_name}` manually"
 				)
 			}
 		}

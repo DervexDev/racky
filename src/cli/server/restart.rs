@@ -1,7 +1,7 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 use clap::Parser;
 
-use crate::{client::Client, ext::ResultExt, logger, racky_info, servers};
+use crate::{client::Client, ext::ResultExt, logger, servers};
 
 /// Restart the server (software)
 #[derive(Parser)]
@@ -24,14 +24,8 @@ impl Restart {
 	}
 
 	fn restart(self) -> Result<()> {
-		let (status, body) = Client::new(&servers::get(self.server)?).post("server/restart")?;
-
-		if status.is_success() {
-			racky_info!("{body}");
-		} else {
-			bail!("{body} ({status})");
-		}
-
-		Ok(())
+		Client::new(&servers::get(self.server)?)
+			.post("server/restart")?
+			.handle()
 	}
 }

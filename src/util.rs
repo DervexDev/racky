@@ -1,5 +1,9 @@
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
 use std::{
-	env, thread,
+	env,
+	process::ExitStatus,
+	thread,
 	time::{Duration, SystemTime},
 };
 
@@ -61,6 +65,19 @@ pub fn get_user() -> Result<String> {
 	let result = env::var("USERNAME");
 
 	result.desc("Failed to get current user")
+}
+
+pub fn get_exit_code(status: &ExitStatus) -> i32 {
+	#[cfg(unix)]
+	let code = status
+		.code()
+		.or_else(|| status.signal())
+		.or_else(|| status.stopped_signal());
+
+	#[cfg(windows)]
+	let code = status.code();
+
+	code.unwrap_or(-1)
 }
 
 /// Returns the service name for the current user

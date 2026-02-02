@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, ensure};
 use clap::Parser;
 use colored::Colorize;
 
@@ -36,9 +36,7 @@ impl Start {
 		let core = Core::new();
 		let web = Web::new(core.clone(), &address, port, password);
 
-		if !web.is_port_free() {
-			bail!("Port {} is already in use", port.to_string().bold());
-		}
+		ensure!(web.is_port_free(), "Port {} is already in use", port.to_string().bold());
 
 		let result = core.start().desc("Failed to start core")?;
 		let message = format!(

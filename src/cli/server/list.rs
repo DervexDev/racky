@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, ensure};
 use clap::Parser;
 
 use crate::{ext::ResultExt, logger::Table, racky_info, servers};
@@ -15,9 +15,7 @@ impl List {
 	fn list(self) -> Result<()> {
 		let servers = servers::read()?;
 
-		if servers.is_empty() {
-			bail!("There are no configured Racky servers");
-		}
+		ensure!(!servers.is_empty(), "There are no configured Racky servers");
 
 		let mut table = Table::new();
 		table.set_header(vec!["Alias", "Address", "Port", "Password", "Default"]);
@@ -32,7 +30,7 @@ impl List {
 			]);
 		}
 
-		racky_info!("All currently configured Racky servers:\n{}", table);
+		racky_info!("All currently configured Racky servers:\n{table}");
 
 		Ok(())
 	}

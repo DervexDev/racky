@@ -36,7 +36,7 @@ fn main() -> ExitCode {
 
 	match Config::load() {
 		Ok(()) => info!("Racky config loaded successfully"),
-		Err(err) => error!("Failed to load config: {err}"),
+		Err(err) => error!("Racky config could not be loaded: {err}"),
 	}
 
 	match cli.main() {

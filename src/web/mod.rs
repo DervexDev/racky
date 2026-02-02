@@ -2,7 +2,7 @@ use std::{io::Result, net::TcpListener};
 
 use axum::{
 	Router,
-	middleware::{from_fn, from_fn_with_state},
+	middleware::from_fn_with_state,
 	routing::{get, post},
 };
 use tokio::net;
@@ -38,12 +38,12 @@ impl Web {
 		let router = Router::new()
 			.route("/", get(root::main))
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
+			.route("/program/remove", post(program::remove::main))
 			.route("/server/reboot", post(server::reboot::main))
 			.route("/server/restart", post(server::restart::main))
 			.route("/server/shutdown", post(server::shutdown::main))
 			.route("/server/stop", post(server::stop::main))
 			.layer(from_fn_with_state(password, middleware::auth::main))
-			.layer(from_fn(middleware::agent::main))
 			.with_state(core);
 
 		Self {

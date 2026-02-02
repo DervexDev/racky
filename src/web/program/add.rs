@@ -1,23 +1,17 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use axum::{
-	Extension,
 	extract::{Multipart, State},
 	response::IntoResponse,
 };
-use colored::Colorize;
-use log::{info, trace, warn};
+use log::{trace, warn};
 
 use crate::{
 	core::{CorePtr, program::Program},
 	dirs, response, zip,
 };
 
-pub async fn main(
-	State(core): State<CorePtr>,
-	Extension(is_racky): Extension<bool>,
-	mut multipart: Multipart,
-) -> impl IntoResponse {
+pub async fn main(State(core): State<CorePtr>, mut multipart: Multipart) -> impl IntoResponse {
 	let mut zip: Option<Vec<u8>> = None;
 	let mut settings = HashMap::new();
 
@@ -47,10 +41,9 @@ pub async fn main(
 		Ok(name) => name,
 		Err(err) => return response!(INTERNAL_SERVER_ERROR, "Failed to get name of zipped program: {err}"),
 	};
-	let name_pretty = if is_racky { name.bold() } else { name.normal() };
 
 	if path.join(&name).exists() || path.join(format!("{name}.sh")).exists() {
-		return response!(CONFLICT, "Program {name_pretty} already exists");
+		return response!(CONFLICT, "Program {name} already exists");
 	}
 
 	match zip::decompress(&zip, &path) {
@@ -63,50 +56,52 @@ pub async fn main(
 	let mut failed = 0;
 
 	for (key, value) in settings {
-		match program.update_config(&key, &value) {
-			Ok(()) => trace!("Set `{key}` to `{value}` in {name} config"),
-			Err(err) => {
-				warn!("Failed to update {name} config: {err}");
-				failed += 1;
-			}
+		if program.update_config(&key, &value).is_err() {
+			failed += 1;
 		}
 	}
 
-	let saved = match program.save_config() {
-		Ok(()) => {
-			info!("Created {name} config file");
-			true
-		}
-		Err(err) => {
-			warn!("Failed to create {name} config file: {err}");
-			false
-		}
-	};
+	let saved = program.save_config().is_ok();
 
 	let mut message = if !saved {
 		String::from(" but failed to create config file")
 	} else if failed != 0 {
-		format!(" but failed to load {} of {} settings", failed, total)
+		format!(" but failed to load {failed} of {total} settings")
 	} else {
 		String::new()
 	};
 
-	if !program.config().auto_start {
-		return response!(OK, "Program {name_pretty} added successfully{message}");
+	match fs::create_dir_all(&program.paths().logs) {
+		Ok(()) => trace!("Created logs directory for {name}"),
+		Err(err) => {
+			warn!("Failed to create logs directory for {name}: {err}");
+
+			message.push_str(&format!(
+				" {} failed to create logs directory",
+				if message.is_empty() { "but" } else { "and" }
+			));
+		}
 	}
 
-	let started = core.start_program(&program);
+	if !program.config().auto_start {
+		return response!(OK, "Program {name} added successfully{message}");
+	}
+
+	let started = core
+		.add_program(&program)
+		.and_then(|_| core.start_program(&program))
+		.is_ok();
 
 	if !started || !message.is_empty() {
-		message += ". See server logs for more details";
+		message.push_str(". See server logs for more details!");
 	}
 
 	if started {
-		response!(OK, "Program {name_pretty} added and started successfully{message}")
+		response!(OK, "Program {name} added and started successfully{message}")
 	} else {
 		response!(
 			OK,
-			"Program {name_pretty} added successfully but failed to start{}",
+			"Program {name} added successfully but failed to start{}",
 			message.replace("but", "and")
 		)
 	}

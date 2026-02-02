@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{Result, bail};
+use anyhow::{Result, ensure};
 use clap::Parser;
 use colored::Colorize;
 
@@ -8,7 +8,7 @@ use crate::{
 	client::Client,
 	core::program::{self},
 	ext::{PathExt, ResultExt},
-	racky_info, servers, zip,
+	servers, zip,
 };
 
 /// Add a new program to the server
@@ -33,21 +33,16 @@ impl Add {
 	fn add(self) -> Result<()> {
 		let path = self.path.resolve().desc("Failed to resolve path")?;
 
-		if program::find_executable(&path).is_none() {
-			bail!("Path {} does not point to a valid program", path.to_string().bold());
-		}
+		ensure!(
+			program::find_executable(&path).is_some(),
+			"Path {} does not point to a valid program",
+			path.to_string().bold()
+		);
 
-		let (status, body) = Client::new(&servers::get(self.server)?)
+		Client::new(&servers::get(self.server)?)
 			.file("file", zip::compress(&path).desc("Failed to zip program")?)
 			.text("auto_start", self.auto_start)
-			.post("program/add")?;
-
-		if status.is_success() {
-			racky_info!("{body}");
-		} else {
-			bail!("{body} ({status})");
-		}
-
-		Ok(())
+			.post("program/add")?
+			.handle()
 	}
 }

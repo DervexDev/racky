@@ -15,27 +15,27 @@ mod update;
 #[derive(Parser)]
 pub struct Server {
 	#[command(subcommand)]
-	command: ServerCommand,
+	command: Command,
 }
 
 impl Server {
 	pub fn main(self) -> Result<()> {
 		match self.command {
-			ServerCommand::Add(command) => command.main(),
-			ServerCommand::List(command) => command.main(),
-			ServerCommand::Reboot(command) => command.main(),
-			ServerCommand::Remove(command) => command.main(),
-			ServerCommand::Restart(command) => command.main(),
-			ServerCommand::Shutdown(command) => command.main(),
-			ServerCommand::Start(command) => command.main(),
-			ServerCommand::Stop(command) => command.main(),
-			ServerCommand::Update(command) => command.main(),
+			Command::Add(command) => command.main(),
+			Command::List(command) => command.main(),
+			Command::Reboot(command) => command.main(),
+			Command::Remove(command) => command.main(),
+			Command::Restart(command) => command.main(),
+			Command::Shutdown(command) => command.main(),
+			Command::Start(command) => command.main(),
+			Command::Stop(command) => command.main(),
+			Command::Update(command) => command.main(),
 		}
 	}
 }
 
 #[derive(Subcommand)]
-enum ServerCommand {
+enum Command {
 	Add(add::Add),
 	List(list::List),
 	Reboot(reboot::Reboot),

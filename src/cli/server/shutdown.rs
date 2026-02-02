@@ -1,7 +1,7 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 use clap::Parser;
 
-use crate::{client::Client, ext::ResultExt, logger, racky_info, servers};
+use crate::{client::Client, ext::ResultExt, logger, servers};
 
 /// Shutdown the server (hardware)
 #[derive(Parser)]
@@ -24,14 +24,8 @@ impl Shutdown {
 	}
 
 	fn shutdown(self) -> Result<()> {
-		let (status, body) = Client::new(&servers::get(self.server)?).post("server/shutdown")?;
-
-		if status.is_success() {
-			racky_info!("{body}");
-		} else {
-			bail!("{body} ({status})");
-		}
-
-		Ok(())
+		Client::new(&servers::get(self.server)?)
+			.post("server/shutdown")?
+			.handle()
 	}
 }

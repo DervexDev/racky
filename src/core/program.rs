@@ -2,7 +2,7 @@ use std::{
 	collections::HashMap,
 	fs,
 	path::{Path, PathBuf},
-	process::{Command, Stdio},
+	process::{Command as StdCommand, Stdio},
 	sync::{Arc, RwLock},
 	thread,
 	time::Duration,
@@ -16,9 +16,10 @@ use serde::{Deserialize, Serialize};
 use toml::Value;
 
 use crate::{
+	command::Command,
 	dirs,
 	ext::{PathExt, ResultExt},
-	logger, racky_error, racky_info, racky_warn, rlock, wlock,
+	logger, racky_error, racky_info, racky_warn, rlock, util, wlock,
 };
 
 pub type ProgramPtr = Arc<Program>;
@@ -26,15 +27,15 @@ pub type ProgramPtr = Arc<Program>;
 #[derive(Debug, Default)]
 pub struct Program {
 	name: String,
-	paths: ProgramPaths,
-	state: RwLock<ProgramState>,
+	paths: Paths,
+	state: RwLock<State>,
 }
 
 impl Program {
 	pub fn new(name: &str) -> ProgramPtr {
 		Arc::new(Self {
 			name: name.to_owned(),
-			paths: ProgramPaths::new(name),
+			paths: Paths::new(name),
 			..Default::default()
 		})
 	}
@@ -43,46 +44,50 @@ impl Program {
 		&self.name
 	}
 
-	pub fn paths(&self) -> &ProgramPaths {
+	pub fn paths(&self) -> &Paths {
 		&self.paths
 	}
 
-	pub fn config(&self) -> ProgramConfig {
+	pub fn config(&self) -> Config {
 		rlock!(self.state).config.clone()
 	}
 
-	pub fn is_valid(&self) -> bool {
-		!self.paths.executable.is_empty()
+	pub fn status(&self) -> Status {
+		rlock!(self.state).status.clone()
+	}
+
+	pub fn is_active(&self) -> bool {
+		matches!(self.status(), Status::Running(_) | Status::Restarting)
 	}
 
 	pub fn load_config(self: &ProgramPtr) {
 		if !self.paths.config.exists() {
-			warn!("No config file found for program {}", self.name);
+			warn!("Config of {} not found", self.name);
 			return;
 		}
 
 		let contents = match fs::read(&self.paths.config) {
 			Ok(contents) => {
-				trace!("{} config file read successfully", self.name);
+				trace!("Config of {} read", self.name);
 				contents
 			}
 			Err(err) => {
-				error!("Failed to read {} config file: {err}", self.name);
+				error!("Config of {} could not be read: {err}", self.name);
 				return;
 			}
 		};
 
 		let config = match toml::from_slice::<Value>(contents.as_slice()).map(|v| v.as_table().cloned()) {
 			Ok(Some(config)) => {
-				trace!("{} config file parsed successfully", self.name);
+				trace!("Config of {} parsed", self.name);
 				config
 			}
 			Ok(None) => {
-				trace!("{} config file is empty", self.name);
+				trace!("Config of {} is empty", self.name);
 				return;
 			}
 			Err(err) => {
-				error!("Failed to parse {} config file: {err}", self.name);
+				error!("Config of {} could not be parsed: {err}", self.name);
 				return;
 			}
 		};
@@ -97,34 +102,49 @@ impl Program {
 			}
 		}
 
-		info!("{} config loaded successfully", self.name);
+		info!("Config of {} loaded successfully", self.name);
 	}
 
 	pub fn save_config(self: &ProgramPtr) -> Result<()> {
-		toml::to_string_pretty(&self.config())
-			.with_desc(|| format!("Failed to serialize {} config", self.name))
+		let result = toml::to_string_pretty(&self.config())
+			.desc("Failed to serialize config")
 			.and_then(|contents| {
 				fs::write(&self.paths.config, contents)
-					.with_desc(|| format!("Failed to write {} config to {:?}", self.name, self.paths.config))
-			})
+					.with_desc(|| format!("Failed to write config to {:?}", self.paths.config))
+			});
+
+		match &result {
+			Ok(()) => info!("Config of {} saved successfully", self.name),
+			Err(err) => warn!("Config of {} could not be saved: {err}", self.name),
+		};
+
+		result
 	}
 
 	pub fn update_config(self: &ProgramPtr, key: &str, value: &str) -> Result<()> {
-		wlock!(self.state)
+		let result = wlock!(self.state)
 			.config
 			.set(key, value)
-			.with_desc(|| format!("Failed to set `{key}` to `{value}`"))?;
+			.with_desc(|| format!("Failed to set `{key}` to `{value}`"));
 
-		Ok(())
+		match &result {
+			Ok(()) => info!("Config of {} updated: `{key}` = `{value}`", self.name),
+			Err(err) => warn!(
+				"Config of {} could not be updated: `{key}` = `{value}`: {err}",
+				self.name
+			),
+		}
+
+		result
 	}
 
-	pub fn start(self: &ProgramPtr) -> bool {
+	pub(super) fn start(self: &ProgramPtr) -> Result<()> {
 		let mut command = if self.paths.executable.get_ext() == "sh" {
-			let mut command = Command::new("bash");
+			let mut command = StdCommand::new("bash");
 			command.arg(&self.paths.executable);
 			command
 		} else {
-			Command::new(&self.paths.executable)
+			StdCommand::new(&self.paths.executable)
 		};
 
 		let mut state = wlock!(self.state);
@@ -137,58 +157,67 @@ impl Program {
 		let name = self.name.bold();
 		let mut process = match result {
 			Ok(process) => {
-				racky_info!("Program {} started successfully", name);
+				racky_info!("Program {name} started successfully");
 				process
 			}
 			Err(err) => {
-				racky_error!("Failed to start program {}: {err}", name);
-				return false;
+				racky_error!("Program {name} failed to start: {err}");
+				state.status = Status::Failed(err.to_string());
+				return Err(err.into());
 			}
 		};
 
-		state.pid = Some(process.id());
+		state.status = Status::Running(process.id());
 		state.executions += 1;
 
 		let this = self.clone();
 
 		logger::capture_output(&mut process, &self.paths.logs);
 		thread::spawn(move || {
-			let success = match process.wait() {
-				Ok(status) => {
-					if status.success() {
-						racky_info!("Program {} exited successfully", name);
-						true
+			let status = match process.wait_with_output() {
+				Ok(output) => {
+					if output.status.success() {
+						racky_info!("Program {name} exited successfully");
+						Status::Finished(String::from_utf8_lossy(&output.stdout).to_string())
 					} else {
-						racky_error!(
-							"Program {} exited with status code {}",
-							name,
-							status.code().unwrap_or(-1).to_string().bold()
-						);
-						false
+						let code = util::get_exit_code(&output.status);
+						// Ignore SIGTERM
+						if code != 15 {
+							racky_error!("Program {name} exited with status code {}", code.to_string().bold());
+						}
+
+						Status::Errored(String::from_utf8_lossy(&output.stderr).to_string())
 					}
 				}
 				Err(err) => {
-					racky_error!("Unexpected error while waiting for program {}: {err}", name);
-					false
+					racky_error!("Program {name} encountered an unexpected error: {err}");
+					Status::Errored(err.to_string())
 				}
 			};
 
+			let success = matches!(status, Status::Finished(_));
 			let mut state = wlock!(this.state);
-			state.pid = None;
+
+			if state.status == Status::Stopped {
+				return;
+			}
+
+			state.status = status;
 
 			if !state.config.auto_restart {
-				racky_warn!("Program {} will not restart: {} disabled", name, "auto_restart".bold());
+				racky_warn!("Program {name} will not restart: {} disabled", "auto_restart".bold());
 				return;
 			}
 
 			if state.attempts >= state.config.restart_attempts {
 				racky_warn!(
-					"Program {} will not restart: maximum number of restart attempts reached: {}",
-					name,
+					"Program {name} will not restart: Maximum number of restart attempts reached: {}",
 					state.attempts.to_string().bold()
 				);
 				return;
 			}
+
+			state.status = Status::Restarting;
 
 			if success {
 				state.attempts = 0;
@@ -197,8 +226,7 @@ impl Program {
 			}
 
 			racky_info!(
-				"Program {} will restart in {} seconds. Attempt {}/{}",
-				name,
+				"Program {name} will restart in {} seconds. Attempt {}/{}",
 				state.config.restart_delay.to_string().bold(),
 				state.attempts.to_string().bold(),
 				state.config.restart_attempts.to_string().bold()
@@ -208,48 +236,53 @@ impl Program {
 			drop(state);
 
 			thread::sleep(Duration::from_secs(delay));
-			this.start();
+
+			if rlock!(this.state).status == Status::Restarting {
+				this.start().ok();
+			}
 		});
 
-		true
+		Ok(())
 	}
 
-	pub fn stop(self: &ProgramPtr) -> bool {
+	pub(super) fn stop(self: &ProgramPtr) -> Result<()> {
 		let mut state = wlock!(self.state);
 
-		let pid = if let Some(pid) = state.pid {
+		let pid = if let Status::Running(pid) = &state.status {
 			pid.to_string()
 		} else {
-			return false;
+			state.status = Status::Stopped;
+			return Ok(());
 		};
+		let name = self.name.bold();
 
-		state.pid = None;
+		state.status = Status::Stopped;
 		drop(state);
 
 		#[cfg(unix)]
-		{
-			// Kill main process
-			Command::new("kill").arg(&pid).output().ok();
+		let result = {
+			Command::new("pkill").args(["-P", &pid]).run().ok();
+			Command::new("kill").arg(&pid).run()
+		};
 
-			// Kill child processes
-			Command::new("pkill").arg("-P").arg(&pid).output().ok();
-		}
-
-		// Kill both main and child processes
 		#[cfg(windows)]
-		Command::new("taskkill")
-			.arg("/f")
-			.arg("/t")
-			.args(["/pid", &pid])
-			.output()
-			.ok();
+		let result = Command::new("taskkill").args(["/f", "/t", "/pid", &pid]).run();
 
-		true
+		match result {
+			Ok(_) => {
+				racky_info!("Program {name} stopped successfully");
+				Ok(())
+			}
+			Err(err) => {
+				racky_error!("Program {name} failed to stop: {err}");
+				Err(err)
+			}
+		}
 	}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Val, Iter, Get, Set)]
-pub struct ProgramConfig {
+pub struct Config {
 	/// Whether to automatically start the program when the Racky server starts
 	pub auto_start: bool,
 	/// Whether to automatically restart the program after it exits
@@ -260,7 +293,7 @@ pub struct ProgramConfig {
 	pub restart_attempts: u64,
 }
 
-impl Default for ProgramConfig {
+impl Default for Config {
 	fn default() -> Self {
 		Self {
 			auto_start: false,
@@ -272,13 +305,13 @@ impl Default for ProgramConfig {
 }
 
 #[derive(Debug, Default)]
-pub struct ProgramPaths {
+pub struct Paths {
 	pub executable: PathBuf,
 	pub config: PathBuf,
 	pub logs: PathBuf,
 }
 
-impl ProgramPaths {
+impl Paths {
 	pub fn new(name: &str) -> Self {
 		Self {
 			executable: find_executable(&dirs::bin().join(name)).unwrap_or_default(),
@@ -288,11 +321,23 @@ impl ProgramPaths {
 	}
 }
 
+#[derive(Debug, Default, Clone, PartialEq)]
+pub enum Status {
+	#[default]
+	Idle,
+	Running(u32),
+	Restarting,
+	Stopped,
+	Finished(String),
+	Errored(String),
+	Failed(String),
+}
+
 #[derive(Debug, Default)]
-struct ProgramState {
-	pub config: ProgramConfig,
+struct State {
 	pub vars: HashMap<String, String>,
-	pub pid: Option<u32>,
+	pub config: Config,
+	pub status: Status,
 	pub executions: u64,
 	pub attempts: u64,
 }

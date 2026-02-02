@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, ensure};
 use clap::Parser;
 use colored::Colorize;
 
@@ -20,11 +20,12 @@ impl Remove {
 	fn remove(self) -> Result<()> {
 		let mut servers = servers::read()?;
 
-		if !servers.contains_key(&self.server) {
-			bail!("Server with alias {} does not exist", self.server.bold());
-		}
+		ensure!(
+			servers.remove(&self.server).is_some(),
+			"Server with alias {} does not exist",
+			self.server.bold()
+		);
 
-		servers.remove(&self.server);
 		servers::write(&servers)?;
 
 		racky_info!("Server {} removed successfully", self.server.bold(),);

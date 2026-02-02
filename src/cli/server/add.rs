@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, ensure};
 use clap::Parser;
 use colored::Colorize;
 
@@ -40,17 +40,18 @@ impl Add {
 
 		let mut servers = servers::read()?;
 
-		if servers.contains_key(&self.server) {
-			bail!("Server with alias {} already exists", self.server.bold());
-		}
+		ensure!(
+			!servers.contains_key(&self.server),
+			"Server with alias {} already exists",
+			self.server.bold()
+		);
 
-		if servers.values().any(|s| s.address == address && s.port == port) {
-			bail!(
-				"Server with address {} and port {} already exists",
-				address.bold(),
-				port.to_string().bold()
-			);
-		}
+		ensure!(
+			!servers.values().any(|s| s.address == address && s.port == port),
+			"Server with address {} and port {} already exists",
+			address.bold(),
+			port.to_string().bold()
+		);
 
 		servers.insert(
 			self.server.clone(),

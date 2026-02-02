@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use reqwest::{
 	StatusCode,
 	blocking::{
@@ -9,13 +9,7 @@ use reqwest::{
 	},
 };
 
-use crate::{constants::USER_AGENT, ext::ResultExt, servers::Server};
-
-#[derive(Debug)]
-pub enum Field {
-	Text(String),
-	File(Vec<u8>),
-}
+use crate::{constants::USER_AGENT, ext::ResultExt, racky_info, servers::Server};
 
 #[derive(Debug)]
 pub struct Client {
@@ -57,7 +51,7 @@ impl Client {
 		self
 	}
 
-	pub fn post(self, path: &str) -> Result<(StatusCode, String)> {
+	pub fn post(self, path: &str) -> Result<Response> {
 		let mut request = ReqwestClient::builder()
 			.build()
 			.desc("Failed to create HTTP client")?
@@ -65,16 +59,34 @@ impl Client {
 			.header("User-Agent", USER_AGENT);
 
 		if !self.fields.is_empty() {
-			let mut form = Form::new();
+			if self.fields.values().any(|field| matches!(field, Field::File(_))) {
+				let mut form = Form::new();
 
-			for (key, value) in self.fields {
-				match value {
-					Field::Text(value) => form = form.text(key, value),
-					Field::File(value) => form = form.part(key, Part::bytes(value)),
+				for (key, value) in self.fields {
+					match value {
+						Field::Text(value) => form = form.text(key, value),
+						Field::File(value) => form = form.part(key, Part::bytes(value)),
+					}
 				}
-			}
 
-			request = request.multipart(form);
+				request = request.multipart(form);
+			} else {
+				let fields = self
+					.fields
+					.iter()
+					.map(|(key, value)| {
+						(
+							key.clone(),
+							match value {
+								Field::Text(value) => value.to_owned(),
+								Field::File(_) => unreachable!(),
+							},
+						)
+					})
+					.collect::<HashMap<_, _>>();
+
+				request = request.form(&fields);
+			}
 		}
 
 		if let Some(password) = &self.password {
@@ -83,6 +95,27 @@ impl Client {
 
 		let response = request.send().desc("Failed to connect to the server")?;
 
-		Ok((response.status(), response.text().unwrap_or_default()))
+		Ok(Response(response.status(), response.text().unwrap_or_default()))
 	}
+}
+
+#[derive(Debug)]
+pub struct Response(pub StatusCode, pub String);
+
+impl Response {
+	pub fn handle(self) -> Result<()> {
+		if self.0.is_success() {
+			racky_info!("{}", self.1);
+		} else {
+			bail!("{} ({})", self.1, self.0);
+		}
+
+		Ok(())
+	}
+}
+
+#[derive(Debug)]
+enum Field {
+	Text(String),
+	File(Vec<u8>),
 }

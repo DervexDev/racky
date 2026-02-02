@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, bail, ensure};
 use clap::Parser;
 use colored::Colorize;
 
@@ -81,9 +81,7 @@ impl Update {
 			self.server
 		};
 
-		if !updated {
-			bail!("No changes detected");
-		}
+		ensure!(updated, "No changes detected");
 
 		servers.insert(alias.clone(), server);
 		servers::write(&servers)?;

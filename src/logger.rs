@@ -198,10 +198,10 @@ fn log(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) ->
 	let mut message = strip_ansi_escapes::strip_str(message);
 
 	if !TIMESTAMP_PATTERN.is_match_at(&message, 0) {
-		message = format!("[{}] {}", util::timestamp(), message);
+		message = format!("[{}] {message}", util::timestamp());
 	}
 
-	writeln!(current_file, "{}", message)?;
+	writeln!(current_file, "{message}")?;
 	current_file.flush()?;
 
 	*size += message.len();
