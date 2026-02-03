@@ -13,7 +13,7 @@ use crate::{
 };
 
 const SYSTEMD_SERVICE: &str = "[Unit]\n\
-Description=Racky ($1)\n\
+Description=Racky Server ($1)\n\
 After=network.target\n\
 \n\
 [Service]\n\
@@ -30,7 +30,7 @@ pub struct Install {
 	/// Install the server side of Racky (requires sudo)
 	#[arg(short, long)]
 	server: bool,
-	/// Rewrite all relevant files even if they already exist
+	/// Rewrite all files even if they already exist (including config)
 	#[arg(short, long)]
 	force: bool,
 }
@@ -65,22 +65,23 @@ impl Install {
 
 		let config_path = config_dir.join("racky.toml");
 
-		if !config_path.exists()
+		if (!config_path.exists() || self.force)
 			&& let Err(err) = Config::default().save()
 		{
 			racky_warn!("Failed to create config file at {config_path:?}: {err}");
 		}
 
+		let current_exe = env::current_exe()?;
 		#[cfg(windows)]
 		let exe_path = bin_dir.join("racky.exe");
 		#[cfg(unix)]
 		let exe_path = bin_dir.join("racky");
 
-		if !exe_path.exists() || self.force {
-			fs::copy(env::current_exe()?, &exe_path).desc("Failed to copy Racky executable to bin directory")?;
+		if (!exe_path.exists() || self.force) && current_exe.resolve()? != exe_path.resolve()? {
+			fs::copy(&current_exe, &exe_path).desc("Failed to copy Racky executable to bin directory")?;
 
 			if logger::prompt("Installation completed! Do you want to remove this executable?", true) {
-				self_replace::self_delete()?;
+				self_replace::self_delete().desc("Failed to remove this executable")?;
 			}
 		}
 

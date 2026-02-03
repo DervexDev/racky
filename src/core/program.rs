@@ -35,7 +35,7 @@ impl Program {
 	pub fn new(name: &str) -> ProgramPtr {
 		Arc::new(Self {
 			name: name.to_owned(),
-			paths: Paths::new(name),
+			paths: Paths::from_name(name),
 			..Default::default()
 		})
 	}
@@ -102,7 +102,7 @@ impl Program {
 			}
 		}
 
-		info!("Config of {} loaded successfully", self.name);
+		info!("Config of {} loaded", self.name);
 	}
 
 	pub fn save_config(self: &ProgramPtr) -> Result<()> {
@@ -114,7 +114,7 @@ impl Program {
 			});
 
 		match &result {
-			Ok(()) => info!("Config of {} saved successfully", self.name),
+			Ok(()) => info!("Config of {} saved", self.name),
 			Err(err) => warn!("Config of {} could not be saved: {err}", self.name),
 		};
 
@@ -149,6 +149,7 @@ impl Program {
 
 		let mut state = wlock!(self.state);
 		let result = command
+			.current_dir(self.paths.get_working_directory())
 			.envs(&state.vars)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -226,10 +227,17 @@ impl Program {
 			}
 
 			racky_info!(
-				"Program {name} will restart in {} seconds. Attempt {}/{}",
+				"Program {name} will restart in {} seconds{}",
 				state.config.restart_delay.to_string().bold(),
-				state.attempts.to_string().bold(),
-				state.config.restart_attempts.to_string().bold()
+				if state.attempts > 0 {
+					format!(
+						". Attempt {}/{}",
+						state.attempts.to_string().bold(),
+						state.config.restart_attempts.to_string().bold()
+					)
+				} else {
+					String::new()
+				}
 			);
 
 			let delay = state.config.restart_delay;
@@ -312,11 +320,62 @@ pub struct Paths {
 }
 
 impl Paths {
-	pub fn new(name: &str) -> Self {
+	pub fn from_path(path: &Path) -> Self {
+		let executable = if path.is_dir() {
+			let script = path.join("racky.sh");
+
+			if script.exists() {
+				script
+			} else {
+				path.join("scripts").join("racky.sh")
+			}
+		} else if !path.exists() {
+			path.get_parent().join(format!("{}.sh", path.get_name()))
+		} else {
+			path.to_owned()
+		};
+
 		Self {
-			executable: find_executable(&dirs::bin().join(name)).unwrap_or_default(),
+			executable,
+			..Default::default()
+		}
+	}
+
+	pub fn from_name(name: &str) -> Self {
+		let path = dirs::bin().join(name);
+
+		Self {
+			executable: Self::from_path(&path).executable,
 			config: dirs::config().join(format!("{name}.toml")),
 			logs: dirs::logs().join(name),
+		}
+	}
+
+	pub fn validate(&self) -> bool {
+		self.executable.exists()
+	}
+
+	pub fn get_program_root(&self) -> PathBuf {
+		if self.executable.get_name() == "racky.sh" {
+			let parent = self.executable.get_parent();
+
+			if parent.get_name() == "scripts" {
+				parent.get_parent().to_owned()
+			} else {
+				parent.to_owned()
+			}
+		} else {
+			self.executable.clone()
+		}
+	}
+
+	pub fn get_working_directory(&self) -> PathBuf {
+		let root = self.get_program_root();
+
+		if root.is_dir() {
+			root
+		} else {
+			root.get_parent().to_owned()
 		}
 	}
 }
@@ -340,23 +399,4 @@ struct State {
 	pub status: Status,
 	pub executions: u64,
 	pub attempts: u64,
-}
-
-pub fn find_executable(path: &Path) -> Option<PathBuf> {
-	let mut executable = path.to_owned();
-
-	if executable.is_dir() {
-		let mut path = executable.clone().join("racky.sh");
-
-		if !path.exists() {
-			path = executable.join("scripts").join("racky.sh");
-		}
-
-		executable = path
-	} else if !executable.exists() {
-		executable.pop();
-		executable = executable.join(format!("{}.sh", path.get_name()))
-	}
-
-	if executable.exists() { Some(executable) } else { None }
 }

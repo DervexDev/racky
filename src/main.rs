@@ -35,7 +35,7 @@ fn main() -> ExitCode {
 	logger::init(verbosity, log_style);
 
 	match Config::load() {
-		Ok(()) => info!("Racky config loaded successfully"),
+		Ok(()) => info!("Racky config loaded"),
 		Err(err) => error!("Racky config could not be loaded: {err}"),
 	}
 

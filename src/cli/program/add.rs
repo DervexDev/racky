@@ -6,7 +6,7 @@ use colored::Colorize;
 
 use crate::{
 	client::Client,
-	core::program::{self},
+	core::program::Paths,
 	ext::{PathExt, ResultExt},
 	servers, zip,
 };
@@ -34,7 +34,7 @@ impl Add {
 		let path = self.path.resolve().desc("Failed to resolve path")?;
 
 		ensure!(
-			program::find_executable(&path).is_some(),
+			Paths::from_path(&path).validate(),
 			"Path {} does not point to a valid program",
 			path.to_string().bold()
 		);

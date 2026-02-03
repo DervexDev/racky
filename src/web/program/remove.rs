@@ -4,8 +4,7 @@ use axum::{Form, extract::State, response::IntoResponse};
 use serde::Deserialize;
 
 use crate::{
-	core::{CorePtr, program::Program},
-	ext::PathExt,
+	core::{CorePtr, program::Paths},
 	response,
 };
 
@@ -15,20 +14,8 @@ pub struct Request {
 }
 
 pub async fn main(State(core): State<CorePtr>, Form(request): Form<Request>) -> impl IntoResponse {
-	let program = Program::new(&request.program);
-	let paths = program.paths();
-
-	let executable = if paths.executable.get_name() == "racky.sh" {
-		let parent = paths.executable.get_parent();
-
-		if parent.get_name() == "scripts" {
-			parent.get_parent().to_owned()
-		} else {
-			parent.to_owned()
-		}
-	} else {
-		paths.executable.clone()
-	};
+	let paths = Paths::from_name(&request.program);
+	let executable = paths.get_program_root();
 
 	let results = [
 		if executable.is_dir() {
