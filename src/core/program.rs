@@ -170,8 +170,12 @@ impl Program {
 
 		state.status = Status::Running(process.id());
 		state.executions += 1;
+		state.index += 1;
 
+		let index = state.index;
 		let this = self.clone();
+
+		drop(state);
 
 		logger::capture_output(&mut process, &self.paths.logs);
 		thread::spawn(move || {
@@ -199,7 +203,7 @@ impl Program {
 			let success = matches!(status, Status::Finished(_));
 			let mut state = wlock!(this.state);
 
-			if state.status == Status::Stopped {
+			if state.index != index {
 				return;
 			}
 
@@ -245,7 +249,7 @@ impl Program {
 
 			thread::sleep(Duration::from_secs(delay));
 
-			if rlock!(this.state).status == Status::Restarting {
+			if rlock!(this.state).index == index {
 				this.start().ok();
 			}
 		});
@@ -265,6 +269,8 @@ impl Program {
 		let name = self.name.bold();
 
 		state.status = Status::Stopped;
+		state.index += 1;
+
 		drop(state);
 
 		#[cfg(unix)]
@@ -399,4 +405,5 @@ struct State {
 	pub status: Status,
 	pub executions: u64,
 	pub attempts: u64,
+	pub index: u64,
 }

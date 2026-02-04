@@ -1,19 +1,14 @@
 use std::fs;
 
 use axum::{Form, extract::State, response::IntoResponse};
-use serde::Deserialize;
 
 use crate::{
 	core::{CorePtr, program::Paths},
 	response,
+	web::program::ProgramRequest,
 };
 
-#[derive(Debug, Deserialize)]
-pub struct Request {
-	program: String,
-}
-
-pub async fn main(State(core): State<CorePtr>, Form(request): Form<Request>) -> impl IntoResponse {
+pub async fn main(State(core): State<CorePtr>, Form(request): Form<ProgramRequest>) -> impl IntoResponse {
 	let paths = Paths::from_name(&request.program);
 	let executable = paths.get_program_root();
 

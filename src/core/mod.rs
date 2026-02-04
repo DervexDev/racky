@@ -102,7 +102,7 @@ impl Core {
 		let name = program.name();
 
 		if programs.contains_key(name) {
-			warn!("Program {name} already exists");
+			warn!("Program {name} already exists in core");
 			bail!("Program already exists");
 		}
 
@@ -121,7 +121,7 @@ impl Core {
 				Ok(())
 			}
 			None => {
-				warn!("Program {name} does not exist");
+				warn!("Program {name} does not exist in core");
 				bail!("Program does not exist");
 			}
 		}
