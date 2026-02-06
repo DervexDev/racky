@@ -6,7 +6,7 @@ use crate::{client::Client, ext::ResultExt, servers};
 /// Start a program on the server
 #[derive(Parser)]
 pub struct Start {
-	/// Program name to start
+	/// Name of the program to start
 	#[arg()]
 	program: String,
 	/// Target server alias

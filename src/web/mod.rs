@@ -37,15 +37,20 @@ impl Web {
 	pub fn new(core: CorePtr, address: &str, port: u16, password: Option<String>) -> Self {
 		let router = Router::new()
 			.route("/", get(root::main))
+			// Program routes
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
+			.route("/program/logs", get(program::logs::main))
 			.route("/program/remove", post(program::remove::main))
 			.route("/program/restart", post(program::restart::main))
 			.route("/program/start", post(program::start::main))
 			.route("/program/stop", post(program::stop::main))
+			// Server routes
+			.route("/server/logs", get(server::logs::main))
 			.route("/server/reboot", post(server::reboot::main))
 			.route("/server/restart", post(server::restart::main))
 			.route("/server/shutdown", post(server::shutdown::main))
 			.route("/server/stop", post(server::stop::main))
+			// Middleware
 			.layer(from_fn_with_state(password, middleware::auth::main))
 			.with_state(core);
 

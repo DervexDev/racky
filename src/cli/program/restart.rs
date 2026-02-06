@@ -6,7 +6,7 @@ use crate::{client::Client, ext::ResultExt, servers};
 /// Restart a program on the server
 #[derive(Parser)]
 pub struct Restart {
-	/// Program name to restart
+	/// Name of the program to restart
 	#[arg()]
 	program: String,
 	/// Target server alias

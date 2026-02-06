@@ -12,16 +12,16 @@ use crate::{
 /// Configure a new server
 #[derive(Parser)]
 pub struct Add {
-	/// Server alias (must be unique)
+	/// Alias for the server (must be unique)
 	#[arg()]
 	server: String,
-	/// Server address
+	/// Address of the server
 	#[arg(short = 'A', long)]
 	address: Option<String>,
-	/// Server port
+	/// Port of the server
 	#[arg(short = 'P', long)]
 	port: Option<u16>,
-	/// Server password
+	/// Password for the server
 	#[arg(short, long)]
 	password: Option<String>,
 }

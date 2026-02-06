@@ -1,13 +1,14 @@
 use std::{
 	fmt::{self, Display, Formatter},
 	fs::{self, File},
-	io::{BufRead, BufReader, Error, Write},
+	io::{BufRead, BufReader, Write},
 	path::Path,
 	process::Child,
 	sync::mpsc,
 	thread,
 };
 
+use anyhow::{Context, Result};
 use colored::{Color, Colorize};
 use dialoguer::{
 	Confirm,
@@ -19,7 +20,12 @@ use lazy_static::lazy_static;
 use log::{Level, LevelFilter};
 use regex::Regex;
 
-use crate::{config::Config, dirs, ext::PathExt, util};
+use crate::{
+	config::Config,
+	dirs,
+	ext::{PathExt, ResultExt},
+	util,
+};
 
 lazy_static! {
 	static ref TIMESTAMP_PATTERN: Regex =
@@ -94,7 +100,7 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 		let mut size = 0;
 
 		while let Ok(message) = rx.recv() {
-			log(&message, &mut file, &mut size, &path).ok();
+			write_file(&message, &mut file, &mut size, &path).ok();
 		}
 	});
 }
@@ -152,7 +158,7 @@ pub fn capture_output(process: &mut Child, path: &Path) {
 		while eof_count < 2 {
 			match rx.recv() {
 				Ok(Some(line)) => {
-					log(&line, &mut file, &mut size, &path).ok();
+					write_file(&line, &mut file, &mut size, &path).ok();
 				}
 				Ok(None) => eof_count += 1,
 				Err(_) => break,
@@ -161,7 +167,22 @@ pub fn capture_output(process: &mut Child, path: &Path) {
 	});
 }
 
-fn log(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) -> Result<(), Error> {
+pub fn read_file(program: &str, index: usize) -> Result<String> {
+	let mut logs = fs::read_dir(dirs::logs().join(program))
+		.with_desc(|| format!("Failed to read {program} log directory"))?
+		.filter_map(|log| log.as_ref().ok().map(|entry| entry.path()))
+		.collect::<Vec<_>>();
+
+	logs.sort_by(|a, b| a.get_stem().cmp(b.get_stem()));
+
+	let log = logs
+		.get(index)
+		.with_context(|| format!("Log file with index {index} does not exist"))?;
+
+	fs::read_to_string(log).with_desc(|| format!("Failed to read {program} log file"))
+}
+
+fn write_file(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) -> Result<()> {
 	let config = Config::new();
 	let current_file = match file {
 		Some(file) => file,

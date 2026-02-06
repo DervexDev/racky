@@ -247,7 +247,7 @@ impl Program {
 			let delay = state.config.restart_delay;
 			drop(state);
 
-			thread::sleep(Duration::from_secs(delay));
+			thread::sleep(Duration::from_secs(delay as u64));
 
 			if rlock!(this.state).index == index {
 				this.start().ok();
@@ -302,9 +302,9 @@ pub struct Config {
 	/// Whether to automatically restart the program after it exits
 	pub auto_restart: bool,
 	/// The delay in seconds before restarting the program after it exits
-	pub restart_delay: u64,
+	pub restart_delay: usize,
 	/// The maximum number of restart attempts after the program exits with an error code
-	pub restart_attempts: u64,
+	pub restart_attempts: usize,
 }
 
 impl Default for Config {
@@ -403,7 +403,7 @@ struct State {
 	pub vars: HashMap<String, String>,
 	pub config: Config,
 	pub status: Status,
-	pub executions: u64,
-	pub attempts: u64,
-	pub index: u64,
+	pub executions: usize,
+	pub attempts: usize,
+	pub index: usize,
 }

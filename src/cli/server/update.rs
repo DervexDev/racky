@@ -4,25 +4,25 @@ use colored::Colorize;
 
 use crate::{ext::ResultExt, racky_info, servers};
 
-/// Update the configuration of an existing server
+/// Update a server's configuration
 #[derive(Parser)]
 pub struct Update {
-	/// Server alias to update
+	/// Target server alias
 	#[arg()]
 	server: String,
-	/// New server alias
+	/// New alias for the server
 	#[arg(short, long)]
 	alias: Option<String>,
-	/// New server address
+	/// New address for the server
 	#[arg(short = 'A', long)]
 	address: Option<String>,
-	/// New server port
+	/// New port for the server
 	#[arg(short = 'P', long)]
 	port: Option<u16>,
-	/// New server password
+	/// New password for the server
 	#[arg(short, long)]
 	password: Option<String>,
-	/// Set the server as default
+	/// Set the server as the default
 	#[arg(short, long)]
 	default: Option<bool>,
 }

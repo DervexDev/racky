@@ -6,7 +6,7 @@ use crate::{client::Client, ext::ResultExt, servers};
 /// Stop a program on the server
 #[derive(Parser)]
 pub struct Stop {
-	/// Program name to stop
+	/// Name of the program to stop
 	#[arg()]
 	program: String,
 	/// Target server alias

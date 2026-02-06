@@ -4,16 +4,16 @@ use colored::Colorize;
 
 use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, web::Web};
 
-/// Start actual Racky server (used by systemd service)
+/// Start the Racky server (used by systemd service)
 #[derive(Parser)]
 pub struct Start {
-	/// Server address
+	/// Address to bind the server to
 	#[arg(short = 'A', long)]
 	address: Option<String>,
-	/// Server port
+	/// Port to bind the server to
 	#[arg(short = 'P', long)]
 	port: Option<u16>,
-	/// Server password
+	/// Password for the server API
 	#[arg(short, long)]
 	password: Option<String>,
 }

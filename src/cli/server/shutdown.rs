@@ -3,7 +3,7 @@ use clap::Parser;
 
 use crate::{client::Client, ext::ResultExt, logger, servers};
 
-/// Shutdown the server (hardware)
+/// Shut down the server (hardware)
 #[derive(Parser)]
 pub struct Shutdown {
 	/// Target server alias

@@ -27,10 +27,10 @@ WantedBy=default.target\n";
 /// Install and/or verify Racky installation
 #[derive(Parser)]
 pub struct Install {
-	/// Install the server side of Racky (requires sudo)
+	/// Install Racky server (requires sudo)
 	#[arg(short, long)]
 	server: bool,
-	/// Rewrite all files even if they already exist (including config)
+	/// Overwrite all files even if they already exist (including config)
 	#[arg(short, long)]
 	force: bool,
 }

@@ -4,10 +4,10 @@ use colored::Colorize;
 
 use crate::{ext::ResultExt, racky_info, servers};
 
-/// Remove the existing server
+/// Remove a configured server
 #[derive(Parser)]
 pub struct Remove {
-	/// Server alias to remove
+	/// Alias of the server to remove
 	#[arg()]
 	server: String,
 }

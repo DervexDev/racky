@@ -6,7 +6,7 @@ use crate::{client::Client, ext::ResultExt, servers};
 /// Remove a program from the server
 #[derive(Parser)]
 pub struct Remove {
-	/// Program name to remove
+	/// Name of the program to remove
 	#[arg()]
 	program: String,
 	/// Target server alias

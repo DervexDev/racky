@@ -14,13 +14,13 @@ use crate::{
 /// Add a new program to the server
 #[derive(Parser)]
 pub struct Add {
-	/// Path to the program file or directory
+	/// Path to program file or directory
 	#[arg()]
 	path: PathBuf,
 	/// Target server alias
 	#[arg(short, long)]
 	server: Option<String>,
-	/// Automatically start the program
+	/// Start the program automatically
 	#[arg(short, long)]
 	auto_start: bool,
 }
@@ -40,7 +40,7 @@ impl Add {
 		);
 
 		Client::new(&servers::get(self.server)?)
-			.file("file", zip::compress(&path).desc("Failed to zip program")?)
+			.binary("file", zip::compress(&path).desc("Failed to zip program")?)
 			.text("auto_start", self.auto_start)
 			.post("program/add")?
 			.handle()
