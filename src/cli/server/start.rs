@@ -38,19 +38,21 @@ impl Start {
 
 		ensure!(web.is_port_free(), "Port {} is already in use", port.to_string().bold());
 
-		let result = core.start().desc("Failed to start core")?;
+		let (started, total) = core.start().desc("Failed to start core")?;
 		let message = format!(
 			"Started {} of {} autostart programs",
-			result.0.to_string().bold(),
-			result.1.to_string().bold()
+			started.to_string().bold(),
+			total.to_string().bold()
 		);
 
-		if result.0 == result.1 {
-			racky_info!("{message}");
-		} else if result.0 == 0 {
-			racky_error!("{message}");
-		} else {
-			racky_warn!("{message}");
+		if total != 0 {
+			if started == total {
+				racky_info!("{message}");
+			} else if started == 0 {
+				racky_error!("{message}");
+			} else {
+				racky_warn!("{}", message.clone().red());
+			}
 		}
 
 		racky_info!(

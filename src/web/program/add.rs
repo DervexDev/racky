@@ -43,7 +43,7 @@ pub async fn main(State(core): State<CorePtr>, mut multipart: Multipart) -> impl
 	};
 
 	if path.join(&name).exists() || path.join(format!("{name}.sh")).exists() {
-		return response!(CONFLICT, "Program {name} already exists");
+		return response!(BAD_REQUEST, "Program {name} already exists");
 	}
 
 	match zip::decompress(&zip, &path) {

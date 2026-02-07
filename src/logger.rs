@@ -100,7 +100,9 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 		let mut size = 0;
 
 		while let Ok(message) = rx.recv() {
-			write_file(&message, &mut file, &mut size, &path).ok();
+			if let Err(err) = write_file(&message, &mut file, &mut size, &path) {
+				eprintln!("Failed to write Racky log file: {err}");
+			}
 		}
 	});
 }
@@ -158,7 +160,9 @@ pub fn capture_output(process: &mut Child, path: &Path) {
 		while eof_count < 2 {
 			match rx.recv() {
 				Ok(Some(line)) => {
-					write_file(&line, &mut file, &mut size, &path).ok();
+					if let Err(err) = write_file(&line, &mut file, &mut size, &path) {
+						eprintln!("Failed to write log file: {err}");
+					}
 				}
 				Ok(None) => eof_count += 1,
 				Err(_) => break,
@@ -167,19 +171,19 @@ pub fn capture_output(process: &mut Child, path: &Path) {
 	});
 }
 
-pub fn read_file(program: &str, index: usize) -> Result<String> {
-	let mut logs = fs::read_dir(dirs::logs().join(program))
-		.with_desc(|| format!("Failed to read {program} log directory"))?
+pub fn read_file(path: &Path, index: usize) -> Result<String> {
+	let mut logs = fs::read_dir(path)
+		.with_desc(|| format!("Failed to read {} log directory", path.get_stem()))?
 		.filter_map(|log| log.as_ref().ok().map(|entry| entry.path()))
 		.collect::<Vec<_>>();
 
-	logs.sort_by(|a, b| a.get_stem().cmp(b.get_stem()));
+	logs.sort_by(|a, b| b.get_stem().cmp(a.get_stem()));
 
 	let log = logs
 		.get(index)
 		.with_context(|| format!("Log file with index {index} does not exist"))?;
 
-	fs::read_to_string(log).with_desc(|| format!("Failed to read {program} log file"))
+	fs::read_to_string(log).with_desc(|| format!("Failed to read {}/{} file", path.get_stem(), log.get_name()))
 }
 
 fn write_file(message: &str, file: &mut Option<File>, size: &mut usize, path: &Path) -> Result<()> {

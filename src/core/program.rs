@@ -10,6 +10,7 @@ use std::{
 
 use anyhow::Result;
 use colored::Colorize;
+use command_group::CommandGroup;
 use config_derive::{Get, Iter, Set, Val};
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
@@ -62,32 +63,32 @@ impl Program {
 
 	pub fn load_config(self: &ProgramPtr) {
 		if !self.paths.config.exists() {
-			warn!("Config of {} not found", self.name);
+			warn!("Config of program {} not found", self.name);
 			return;
 		}
 
 		let contents = match fs::read(&self.paths.config) {
 			Ok(contents) => {
-				trace!("Config of {} read", self.name);
+				trace!("Config of program {} read", self.name);
 				contents
 			}
 			Err(err) => {
-				error!("Config of {} could not be read: {err}", self.name);
+				error!("Config of program {} could not be read: {err}", self.name);
 				return;
 			}
 		};
 
 		let config = match toml::from_slice::<Value>(contents.as_slice()).map(|v| v.as_table().cloned()) {
 			Ok(Some(config)) => {
-				trace!("Config of {} parsed", self.name);
+				trace!("Config of program {} parsed", self.name);
 				config
 			}
 			Ok(None) => {
-				trace!("Config of {} is empty", self.name);
+				trace!("Config of program {} is empty", self.name);
 				return;
 			}
 			Err(err) => {
-				error!("Config of {} could not be parsed: {err}", self.name);
+				error!("Config of program {} could not be parsed: {err}", self.name);
 				return;
 			}
 		};
@@ -102,7 +103,7 @@ impl Program {
 			}
 		}
 
-		info!("Config of {} loaded", self.name);
+		info!("Config of program {} loaded", self.name);
 	}
 
 	pub fn save_config(self: &ProgramPtr) -> Result<()> {
@@ -114,8 +115,8 @@ impl Program {
 			});
 
 		match &result {
-			Ok(()) => info!("Config of {} saved", self.name),
-			Err(err) => warn!("Config of {} could not be saved: {err}", self.name),
+			Ok(()) => info!("Config of program {} saved", self.name),
+			Err(err) => warn!("Config of program {} could not be saved: {err}", self.name),
 		};
 
 		result
@@ -128,9 +129,9 @@ impl Program {
 			.with_desc(|| format!("Failed to set `{key}` to `{value}`"));
 
 		match &result {
-			Ok(()) => info!("Config of {} updated: `{key}` = `{value}`", self.name),
+			Ok(()) => info!("Config of program {} updated: `{key}` = `{value}`", self.name),
 			Err(err) => warn!(
-				"Config of {} could not be updated: `{key}` = `{value}`: {err}",
+				"Config of program {} could not be updated: `{key}` = `{value}`: {err}",
 				self.name
 			),
 		}
@@ -153,7 +154,7 @@ impl Program {
 			.envs(&state.vars)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
-			.spawn();
+			.group_spawn();
 
 		let name = self.name.bold();
 		let mut process = match result {
@@ -177,7 +178,7 @@ impl Program {
 
 		drop(state);
 
-		logger::capture_output(&mut process, &self.paths.logs);
+		logger::capture_output(process.inner(), &self.paths.logs);
 		thread::spawn(move || {
 			let status = match process.wait_with_output() {
 				Ok(output) => {
@@ -264,6 +265,7 @@ impl Program {
 			pid.to_string()
 		} else {
 			state.status = Status::Stopped;
+			state.index += 1;
 			return Ok(());
 		};
 		let name = self.name.bold();
@@ -274,11 +276,7 @@ impl Program {
 		drop(state);
 
 		#[cfg(unix)]
-		let result = {
-			Command::new("pkill").args(["-P", &pid]).run().ok();
-			Command::new("kill").arg(&pid).run()
-		};
-
+		let result = Command::new("kill").args(["--", &format!("-{}", pid)]).run();
 		#[cfg(windows)]
 		let result = Command::new("taskkill").args(["/f", "/t", "/pid", &pid]).run();
 
