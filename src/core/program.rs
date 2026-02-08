@@ -1,11 +1,12 @@
 use std::{
 	collections::HashMap,
+	fmt::{self, Display, Formatter},
 	fs,
 	path::{Path, PathBuf},
 	process::{Command as StdCommand, Stdio},
 	sync::{Arc, RwLock},
 	thread,
-	time::Duration,
+	time::{Duration, SystemTime},
 };
 
 use anyhow::Result;
@@ -47,6 +48,10 @@ impl Program {
 
 	pub fn paths(&self) -> &Paths {
 		&self.paths
+	}
+
+	pub fn state(&self) -> State {
+		rlock!(self.state).clone()
 	}
 
 	pub fn config(&self) -> Config {
@@ -164,14 +169,13 @@ impl Program {
 			}
 			Err(err) => {
 				racky_error!("Program {name} failed to start: {err}");
-				state.status = Status::Failed(err.to_string());
+				state.set_status(Status::Failed(err.to_string()));
 				return Err(err.into());
 			}
 		};
 
-		state.status = Status::Running(process.id());
+		state.set_status(Status::Running(process.id()));
 		state.executions += 1;
-		state.index += 1;
 
 		let index = state.index;
 		let this = self.clone();
@@ -186,13 +190,15 @@ impl Program {
 						racky_info!("Program {name} exited successfully");
 						Status::Finished(String::from_utf8_lossy(&output.stdout).to_string())
 					} else {
+						let err = String::from_utf8_lossy(&output.stderr).to_string();
 						let code = util::get_exit_code(&output.status);
+
 						// Ignore SIGTERM
 						if code != 15 {
 							racky_error!("Program {name} exited with status code {}", code.to_string().bold());
 						}
 
-						Status::Errored(String::from_utf8_lossy(&output.stderr).to_string())
+						Status::Errored(if err.is_empty() { code.to_string() } else { err })
 					}
 				}
 				Err(err) => {
@@ -205,39 +211,46 @@ impl Program {
 			let mut state = wlock!(this.state);
 
 			if state.index != index {
+				if success {
+					state.attempts.set_current(0);
+				}
 				return;
 			}
 
-			state.status = status;
+			state.set_status(status);
 
 			if !state.config.auto_restart {
 				racky_warn!("Program {name} will not restart: {} disabled", "auto_restart".bold());
 				return;
 			}
 
-			if state.attempts >= state.config.restart_attempts {
+			if state.attempts.current >= state.config.restart_attempts {
 				racky_warn!(
 					"Program {name} will not restart: Maximum number of restart attempts reached: {}",
-					state.attempts.to_string().bold()
+					state.attempts.current.to_string().bold()
 				);
 				return;
 			}
 
-			state.status = Status::Restarting;
+			state.set_status(Status::Restarting);
 
 			if success {
-				state.attempts = 0;
+				state.attempts.set_current(0);
 			} else {
-				state.attempts += 1;
+				let current = state.attempts.current + 1;
+				let total = state.attempts.total + 1;
+
+				state.attempts.set_current(current);
+				state.attempts.set_total(total);
 			}
 
 			racky_info!(
 				"Program {name} will restart in {} seconds{}",
 				state.config.restart_delay.to_string().bold(),
-				if state.attempts > 0 {
+				if state.attempts.current > 0 {
 					format!(
 						". Attempt {}/{}",
-						state.attempts.to_string().bold(),
+						state.attempts.current.to_string().bold(),
 						state.config.restart_attempts.to_string().bold()
 					)
 				} else {
@@ -264,14 +277,12 @@ impl Program {
 		let pid = if let Status::Running(pid) = &state.status {
 			pid.to_string()
 		} else {
-			state.status = Status::Stopped;
-			state.index += 1;
+			state.set_status(Status::Stopped);
 			return Ok(());
 		};
 		let name = self.name.bold();
 
-		state.status = Status::Stopped;
-		state.index += 1;
+		state.set_status(Status::Stopped);
 
 		drop(state);
 
@@ -396,12 +407,92 @@ pub enum Status {
 	Failed(String),
 }
 
-#[derive(Debug, Default)]
-struct State {
+impl Display for Status {
+	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+		match self {
+			Status::Idle => write!(f, "Idle"),
+			Status::Running(pid) => write!(f, "Running ({})", pid),
+			Status::Restarting => write!(f, "Restarting..."),
+			Status::Stopped => write!(f, "Stopped"),
+			Status::Finished(output) => write!(f, "Finished ({})", output),
+			Status::Errored(output) => write!(f, "Errored ({})", output),
+			Status::Failed(output) => write!(f, "Failed ({})", output),
+		}
+	}
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Tracker<T> {
+	pub current: T,
+	pub total: T,
+}
+
+impl<T> Tracker<T> {
+	pub fn new(current: T, total: T) -> Self {
+		Self { current, total }
+	}
+
+	pub fn set_current(&mut self, current: T) {
+		self.current = current;
+	}
+
+	pub fn set_total(&mut self, total: T) {
+		self.total = total;
+	}
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct State {
 	pub vars: HashMap<String, String>,
 	pub config: Config,
 	pub status: Status,
 	pub executions: usize,
-	pub attempts: usize,
-	pub index: usize,
+	pub attempts: Tracker<usize>,
+	pub start_time: Tracker<Option<SystemTime>>,
+	runtime: Tracker<Duration>,
+	index: usize,
+}
+
+impl State {
+	pub fn set_status(&mut self, status: Status) {
+		let is_running = matches!(status, Status::Running(_));
+
+		if is_running {
+			let now = Some(SystemTime::now());
+
+			self.start_time.set_current(now);
+			self.runtime.set_current(Duration::ZERO);
+
+			if self.start_time.total.is_none() {
+				self.start_time.set_total(now);
+			}
+		} else if let Some(start_time) = self.start_time.current {
+			let elapsed = start_time.elapsed().unwrap_or_default();
+
+			self.runtime.set_current(elapsed);
+			self.runtime.set_total(self.runtime.total.saturating_add(elapsed));
+		}
+
+		if is_running || matches!(status, Status::Stopped) {
+			self.index += 1;
+		}
+
+		self.status = status;
+	}
+
+	pub fn get_runtime(&self) -> Tracker<Duration> {
+		let elapsed = if matches!(self.status, Status::Running(_)) {
+			self.start_time
+				.current
+				.and_then(|time| time.elapsed().ok())
+				.unwrap_or_default()
+		} else {
+			Duration::ZERO
+		};
+
+		Tracker {
+			current: self.runtime.current + elapsed,
+			total: self.runtime.total + elapsed,
+		}
+	}
 }

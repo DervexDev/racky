@@ -53,8 +53,11 @@ pub fn env_yes() -> bool {
 }
 
 /// Returns the current timestamp in the `YYYY-MM-DD HH:MM:SS` format
-pub fn timestamp() -> String {
-	format!("{:.0}", Timestamp::try_from(SystemTime::now()).unwrap_or_default())
+pub fn timestamp(time: Option<SystemTime>) -> String {
+	format!(
+		"{:.0}",
+		Timestamp::try_from(time.unwrap_or_else(SystemTime::now)).unwrap_or_default()
+	)
 }
 
 /// Returns the current user name

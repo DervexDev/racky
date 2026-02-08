@@ -3,7 +3,7 @@ use clap::Parser;
 
 use crate::{client::Client, ext::ResultExt, servers};
 
-/// Read logs from the server
+/// Get logs from the server
 #[derive(Parser)]
 pub struct Logs {
 	/// Target server alias

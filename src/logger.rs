@@ -213,7 +213,7 @@ fn write_file(message: &str, file: &mut Option<File>, size: &mut usize, path: &P
 				}
 			}
 
-			let path = path.join(format!("{}.log", util::timestamp().replace(":", "-")));
+			let path = path.join(format!("{}.log", util::timestamp(None).replace(":", "-")));
 
 			*file = Some(File::create(path)?);
 			file.as_mut().unwrap()
@@ -223,7 +223,7 @@ fn write_file(message: &str, file: &mut Option<File>, size: &mut usize, path: &P
 	let mut message = strip_ansi_escapes::strip_str(message);
 
 	if !TIMESTAMP_PATTERN.is_match_at(&message, 0) {
-		message = format!("[{}] {message}", util::timestamp());
+		message = format!("[{}] {message}", util::timestamp(None));
 	}
 
 	writeln!(current_file, "{message}")?;

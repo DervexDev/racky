@@ -9,6 +9,7 @@ mod remove;
 mod restart;
 mod shutdown;
 mod start;
+mod status;
 mod stop;
 mod update;
 
@@ -30,6 +31,7 @@ impl Server {
 			Command::Restart(command) => command.main(),
 			Command::Shutdown(command) => command.main(),
 			Command::Start(command) => command.main(),
+			Command::Status(command) => command.main(),
 			Command::Stop(command) => command.main(),
 			Command::Update(command) => command.main(),
 		}
@@ -46,6 +48,7 @@ enum Command {
 	Restart(restart::Restart),
 	Shutdown(shutdown::Shutdown),
 	Start(start::Start),
+	Status(status::Status),
 	Stop(stop::Stop),
 	Update(update::Update),
 }

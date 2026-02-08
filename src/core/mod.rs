@@ -2,6 +2,7 @@ use std::{
 	collections::HashMap,
 	fs,
 	sync::{Arc, RwLock},
+	time::SystemTime,
 };
 
 use anyhow::{Result, bail};
@@ -18,14 +19,18 @@ pub mod program;
 
 pub type CorePtr = Arc<Core>;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Core {
-	programs: RwLock<HashMap<String, ProgramPtr>>,
+	pub programs: RwLock<HashMap<String, ProgramPtr>>,
+	pub start_time: SystemTime,
 }
 
 impl Core {
 	pub fn new() -> CorePtr {
-		Arc::new(Self::default())
+		Arc::new(Self {
+			programs: RwLock::new(HashMap::new()),
+			start_time: SystemTime::now(),
+		})
 	}
 
 	pub fn start(self: &CorePtr) -> Result<(usize, usize)> {

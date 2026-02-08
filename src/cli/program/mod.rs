@@ -6,6 +6,7 @@ mod logs;
 mod remove;
 mod restart;
 mod start;
+mod status;
 mod stop;
 
 /// Run and setup programs on Racky servers
@@ -23,6 +24,7 @@ impl Program {
 			Command::Remove(command) => command.main(),
 			Command::Restart(command) => command.main(),
 			Command::Start(command) => command.main(),
+			Command::Status(command) => command.main(),
 			Command::Stop(command) => command.main(),
 		}
 	}
@@ -35,5 +37,6 @@ enum Command {
 	Remove(remove::Remove),
 	Restart(restart::Restart),
 	Start(start::Start),
+	Status(status::Status),
 	Stop(stop::Stop),
 }

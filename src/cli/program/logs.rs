@@ -3,7 +3,7 @@ use clap::Parser;
 
 use crate::{client::Client, ext::ResultExt, servers};
 
-/// Read logs of a program from the server
+/// Get logs of a program from the server
 #[derive(Parser)]
 pub struct Logs {
 	/// Name of the program to get logs for
@@ -19,7 +19,7 @@ pub struct Logs {
 
 impl Logs {
 	pub fn main(self) -> Result<()> {
-		self.logs().desc("Failed to get server logs")
+		self.logs().desc("Failed to get program logs")
 	}
 
 	fn logs(self) -> Result<()> {

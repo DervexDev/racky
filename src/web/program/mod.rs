@@ -5,6 +5,7 @@ pub mod logs;
 pub mod remove;
 pub mod restart;
 pub mod start;
+pub mod status;
 pub mod stop;
 
 #[derive(Debug, Deserialize)]
