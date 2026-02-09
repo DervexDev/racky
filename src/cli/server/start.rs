@@ -60,7 +60,9 @@ impl Start {
 			format!("http://{address}:{port}").bold()
 		);
 
+		drop(config);
 		drop(core);
+
 		web.start().desc("Could not start the serve session")
 	}
 }

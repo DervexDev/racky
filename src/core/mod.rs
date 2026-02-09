@@ -59,11 +59,7 @@ impl Core {
 
 			total += 1;
 
-			if self
-				.add_program(&program)
-				.and_then(|_| self.start_program(&program))
-				.is_ok()
-			{
+			if self.add_program(&program).and_then(|_| program.start()).is_ok() {
 				successful += 1;
 			}
 		}
@@ -83,6 +79,7 @@ impl Core {
 			bail!("{message}");
 		}
 
+		program.load_config();
 		program.start()
 	}
 

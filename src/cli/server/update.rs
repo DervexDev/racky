@@ -4,7 +4,7 @@ use colored::Colorize;
 
 use crate::{ext::ResultExt, racky_info, servers};
 
-/// Update a server's configuration
+/// Update a server's details
 #[derive(Parser)]
 pub struct Update {
 	/// Target server alias

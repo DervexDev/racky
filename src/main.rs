@@ -5,7 +5,6 @@ use std::{
 };
 
 use env_logger::WriteStyle;
-use log::{error, info};
 use racky::{cli::Cli, config::Config, logger, racky_error};
 
 fn main() -> ExitCode {
@@ -33,11 +32,7 @@ fn main() -> ExitCode {
 	}
 
 	logger::init(verbosity, log_style);
-
-	match Config::load() {
-		Ok(()) => info!("Racky config loaded"),
-		Err(err) => error!("Racky config could not be loaded: {err}"),
-	}
+	Config::load();
 
 	match cli.main() {
 		Ok(()) => ExitCode::SUCCESS,

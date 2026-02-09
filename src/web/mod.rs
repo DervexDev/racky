@@ -3,6 +3,7 @@ use std::{io::Result, net::TcpListener};
 use axum::{
 	Router,
 	middleware::from_fn_with_state,
+	response::Redirect,
 	routing::{get, post},
 };
 use tokio::net;
@@ -10,8 +11,8 @@ use tokio::net;
 use crate::{constants::BODY_SIZE_LIMIT, core::CorePtr};
 
 mod middleware;
+mod ping;
 mod program;
-mod root;
 mod server;
 
 #[macro_export]
@@ -36,9 +37,11 @@ pub struct Web {
 impl Web {
 	pub fn new(core: CorePtr, address: &str, port: u16, password: Option<String>) -> Self {
 		let router = Router::new()
-			.route("/", get(root::main))
+			.route("/", get(|| async { Redirect::to("/server/status") }))
+			.route("/ping", get(ping::main))
 			// Program routes
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
+			.route("/program/config", post(program::config::main))
 			.route("/program/logs", get(program::logs::main))
 			.route("/program/remove", post(program::remove::main))
 			.route("/program/restart", post(program::restart::main))
@@ -46,6 +49,7 @@ impl Web {
 			.route("/program/status", get(program::status::main))
 			.route("/program/stop", post(program::stop::main))
 			// Server routes
+			.route("/server/config", post(server::config::main))
 			.route("/server/logs", get(server::logs::main))
 			.route("/server/reboot", post(server::reboot::main))
 			.route("/server/restart", post(server::restart::main))

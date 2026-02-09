@@ -64,7 +64,10 @@ pub async fn main(State(core): State<CorePtr>, Form(request): Form<ProgramReques
 	if results.is_empty() {
 		response!(NOT_FOUND, "Program {} does not exist{message}", request.program)
 	} else if !errors.is_empty() {
-		response!(INTERNAL_SERVER_ERROR, format!("Failed to remove program: {message}"))
+		response!(
+			INTERNAL_SERVER_ERROR,
+			format!("Failed to remove program {}: {message}", request.program)
+		)
 	} else {
 		response!(
 			OK,

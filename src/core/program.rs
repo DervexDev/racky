@@ -4,7 +4,7 @@ use std::{
 	fs,
 	path::{Path, PathBuf},
 	process::{Command as StdCommand, Stdio},
-	sync::{Arc, RwLock},
+	sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 	thread,
 	time::{Duration, SystemTime},
 };
@@ -13,9 +13,10 @@ use anyhow::Result;
 use colored::Colorize;
 use command_group::CommandGroup;
 use config_derive::{Get, Iter, Set, Val};
+use documented::DocumentedFields;
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
-use toml::Value;
+use toml::{Value, map::Map};
 
 use crate::{
 	command::Command,
@@ -50,8 +51,12 @@ impl Program {
 		&self.paths
 	}
 
-	pub fn state(&self) -> State {
-		rlock!(self.state).clone()
+	pub fn state(&self) -> RwLockReadGuard<'_, State> {
+		rlock!(self.state)
+	}
+
+	pub fn state_mut(&self) -> RwLockWriteGuard<'_, State> {
+		wlock!(self.state)
 	}
 
 	pub fn config(&self) -> Config {
@@ -101,10 +106,12 @@ impl Program {
 		let mut state = wlock!(self.state);
 
 		for (key, value) in config {
-			let value = value.to_string();
+			let value = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
 
-			if state.config.set(&key, &value).is_err() {
+			if state.config.get(&key).is_none() {
 				state.vars.insert(key, value);
+			} else if let Err(err) = state.config.set(&key, &value) {
+				error!("Field `{key}` of {} program config could not be set: {err}", self.name);
 			}
 		}
 
@@ -112,12 +119,25 @@ impl Program {
 	}
 
 	pub fn save_config(self: &ProgramPtr) -> Result<()> {
-		let result = toml::to_string_pretty(&self.config())
+		let config = Map::from_iter(self.config().into_iter().map(|(k, v)| (k.to_owned(), v.into())));
+		let vars = Map::from_iter(rlock!(self.state).vars.iter().map(|(k, v)| {
+			let v = v
+				.parse::<i64>()
+				.map(Value::Integer)
+				.or_else(|_| v.parse::<f64>().map(Value::Float))
+				.or_else(|_| v.parse::<bool>().map(Value::Boolean))
+				.unwrap_or_else(|_| Value::String(v.to_owned()));
+			(k.to_owned(), v)
+		}));
+
+		let result = toml::to_string_pretty(&config)
 			.desc("Failed to serialize config")
-			.and_then(|contents| {
-				fs::write(&self.paths.config, contents)
-					.with_desc(|| format!("Failed to write config to {:?}", self.paths.config))
-			});
+			.and_then(|config| {
+				toml::to_string_pretty(&vars)
+					.map(|vars| format!("{config}{}{vars}", if vars.is_empty() { "" } else { "\n" }))
+					.desc("Failed to serialize variables")
+			})
+			.and_then(|contents| fs::write(&self.paths.config, contents).desc("Failed to write config"));
 
 		match &result {
 			Ok(()) => info!("Config of program {} saved", self.name),
@@ -128,17 +148,25 @@ impl Program {
 	}
 
 	pub fn update_config(self: &ProgramPtr, key: &str, value: &str) -> Result<()> {
-		let result = wlock!(self.state)
-			.config
-			.set(key, value)
-			.with_desc(|| format!("Failed to set `{key}` to `{value}`"));
+		let mut state = wlock!(self.state);
+
+		let result = if state.config.get(key).is_none() {
+			if value.is_empty() {
+				state.vars.remove(key);
+			} else {
+				state.vars.insert(key.to_string(), value.to_string());
+			}
+			Ok(())
+		} else {
+			state
+				.config
+				.set(key, value)
+				.with_desc(|| format!("Failed to set `{key}` to `{value}`"))
+		};
 
 		match &result {
 			Ok(()) => info!("Config of program {} updated: `{key}` = `{value}`", self.name),
-			Err(err) => warn!(
-				"Config of program {} could not be updated: `{key}` = `{value}`: {err}",
-				self.name
-			),
+			Err(err) => warn!("Config of program {} could not be updated: {err}", self.name),
 		}
 
 		result
@@ -304,7 +332,7 @@ impl Program {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Val, Iter, Get, Set)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DocumentedFields, Val, Iter, Get, Set)]
 pub struct Config {
 	/// Whether to automatically start the program when the Racky server starts
 	pub auto_start: bool,
@@ -323,6 +351,15 @@ impl Default for Config {
 			auto_restart: true,
 			restart_delay: 3,
 			restart_attempts: 5,
+		}
+	}
+}
+
+impl From<ConfigValue> for Value {
+	fn from(value: ConfigValue) -> Self {
+		match value {
+			ConfigValue::Bool(value) => Value::Boolean(value),
+			ConfigValue::Usize(value) => Value::Integer(value as i64),
 		}
 	}
 }

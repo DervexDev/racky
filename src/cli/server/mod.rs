@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod add;
+mod config;
 mod list;
 mod logs;
 mod reboot;
@@ -24,6 +25,7 @@ impl Server {
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Command::Add(command) => command.main(),
+			Command::Config(command) => command.main(),
 			Command::List(command) => command.main(),
 			Command::Logs(command) => command.main(),
 			Command::Reboot(command) => command.main(),
@@ -41,6 +43,7 @@ impl Server {
 #[derive(Subcommand)]
 enum Command {
 	Add(add::Add),
+	Config(config::Config),
 	List(list::List),
 	Logs(logs::Logs),
 	Reboot(reboot::Reboot),

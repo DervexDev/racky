@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod add;
+mod config;
 mod logs;
 mod remove;
 mod restart;
@@ -20,6 +21,7 @@ impl Program {
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Command::Add(command) => command.main(),
+			Command::Config(command) => command.main(),
 			Command::Logs(command) => command.main(),
 			Command::Remove(command) => command.main(),
 			Command::Restart(command) => command.main(),
@@ -33,6 +35,7 @@ impl Program {
 #[derive(Subcommand)]
 enum Command {
 	Add(add::Add),
+	Config(config::Config),
 	Logs(logs::Logs),
 	Remove(remove::Remove),
 	Restart(restart::Restart),

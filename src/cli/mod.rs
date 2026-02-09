@@ -8,11 +8,11 @@ use log::LevelFilter;
 
 use crate::util;
 
+mod config;
 mod install;
 mod program;
 mod server;
 
-#[macro_export]
 macro_rules! about {
 	() => {
 		concat!("Racky ", env!("CARGO_PKG_VERSION"))
@@ -105,6 +105,7 @@ impl Cli {
 
 	pub fn main(self) -> Result<()> {
 		match self.command {
+			Commands::Config(command) => command.main(),
 			Commands::Install(command) => command.main(),
 			Commands::Program(command) => command.main(),
 			Commands::Server(command) => command.main(),
@@ -114,6 +115,7 @@ impl Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+	Config(config::Config),
 	Install(install::Install),
 	Program(program::Program),
 	Server(server::Server),
