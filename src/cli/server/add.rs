@@ -9,7 +9,7 @@ use crate::{
 	servers::{self, Server},
 };
 
-/// Configure a new server
+/// Add a new server
 #[derive(Parser)]
 pub struct Add {
 	/// Alias for the server (must be unique)

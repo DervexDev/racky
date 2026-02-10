@@ -79,6 +79,7 @@ impl Core {
 			bail!("{message}");
 		}
 
+		program.state_mut().attempts.set_current(0);
 		program.load_config();
 		program.start()
 	}

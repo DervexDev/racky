@@ -8,6 +8,7 @@ pub mod restart;
 pub mod start;
 pub mod status;
 pub mod stop;
+pub mod update;
 
 #[derive(Debug, Deserialize)]
 pub struct ProgramRequest {

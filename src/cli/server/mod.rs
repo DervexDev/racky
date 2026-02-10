@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod add;
+mod change;
 mod config;
 mod list;
 mod logs;
@@ -12,7 +13,6 @@ mod shutdown;
 mod start;
 mod status;
 mod stop;
-mod update;
 
 /// Manage and configure Racky servers
 #[derive(Parser)]
@@ -25,6 +25,7 @@ impl Server {
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Command::Add(command) => command.main(),
+			Command::Change(command) => command.main(),
 			Command::Config(command) => command.main(),
 			Command::List(command) => command.main(),
 			Command::Logs(command) => command.main(),
@@ -35,7 +36,6 @@ impl Server {
 			Command::Start(command) => command.main(),
 			Command::Status(command) => command.main(),
 			Command::Stop(command) => command.main(),
-			Command::Update(command) => command.main(),
 		}
 	}
 }
@@ -43,6 +43,7 @@ impl Server {
 #[derive(Subcommand)]
 enum Command {
 	Add(add::Add),
+	Change(change::Change),
 	Config(config::Config),
 	List(list::List),
 	Logs(logs::Logs),
@@ -53,5 +54,4 @@ enum Command {
 	Start(start::Start),
 	Status(status::Status),
 	Stop(stop::Stop),
-	Update(update::Update),
 }

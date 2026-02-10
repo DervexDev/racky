@@ -48,6 +48,7 @@ impl Web {
 			.route("/program/start", post(program::start::main))
 			.route("/program/status", get(program::status::main))
 			.route("/program/stop", post(program::stop::main))
+			.route("/program/update", post(program::update::main).layer(BODY_SIZE_LIMIT))
 			// Server routes
 			.route("/server/config", post(server::config::main))
 			.route("/server/logs", get(server::logs::main))

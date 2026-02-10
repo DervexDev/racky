@@ -4,9 +4,9 @@ use colored::Colorize;
 
 use crate::{ext::ResultExt, racky_info, servers};
 
-/// Update a server's details
+/// Change details of a saved server
 #[derive(Parser)]
-pub struct Update {
+pub struct Change {
 	/// Target server alias
 	#[arg()]
 	server: String,
@@ -27,7 +27,7 @@ pub struct Update {
 	default: Option<bool>,
 }
 
-impl Update {
+impl Change {
 	pub fn main(self) -> Result<()> {
 		self.update().desc("Failed to update the server")
 	}
