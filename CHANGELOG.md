@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-11
+
 ### Added
 
 - Initial release
+
+[unreleased]: https://github.com/DervexDev/racky/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/DervexDev/racky/compare/debd4a6aea8a70963a0d291b1b7f1eb464f65918...0.1.1
