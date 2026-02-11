@@ -14,7 +14,7 @@ path = "src/lib.rs"
 anyhow = "1.0.100"
 axum = { version = "0.8.8", features = ["multipart"] }
 bytes = "1.11"
-clap = { version = "4.5.54", features = ["derive"] }
+clap = { version = "4.5.58", features = ["derive"] }
 clap-verbosity-flag = "3.0.4"
 config-derive = { version = "*", path = "crates/config-derive" }
 colored = "3.1.1"
