@@ -4,7 +4,7 @@ use axum::{extract::State, response::IntoResponse};
 use jiff::SignedDuration;
 use sysinfo::{Components, Disks, System};
 
-use crate::{constants::GIGABYTE, core::CorePtr, response, rlock, util};
+use crate::{consts::GIGABYTE, core::CorePtr, response, rlock, util};
 
 pub async fn main(State(core): State<CorePtr>) -> impl IntoResponse {
 	let programs = rlock!(core.programs);

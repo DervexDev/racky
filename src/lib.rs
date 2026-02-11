@@ -4,7 +4,7 @@ pub mod cli;
 pub mod client;
 pub mod command;
 pub mod config;
-pub mod constants;
+pub mod consts;
 pub mod core;
 pub mod dirs;
 pub mod ext;

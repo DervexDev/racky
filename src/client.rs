@@ -9,7 +9,7 @@ use reqwest::{
 	},
 };
 
-use crate::{constants::USER_AGENT, ext::ResultExt, racky_info, servers::Server};
+use crate::{consts::USER_AGENT, ext::ResultExt, racky_info, servers::Server};
 
 #[derive(Debug)]
 pub struct Client {

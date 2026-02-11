@@ -8,7 +8,7 @@ use axum::{
 };
 use tokio::net;
 
-use crate::{constants::BODY_SIZE_LIMIT, core::CorePtr};
+use crate::{consts::BODY_SIZE_LIMIT, core::CorePtr};
 
 mod middleware;
 mod ping;
