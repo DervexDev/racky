@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 
 mod add;
 mod config;
+mod list;
 mod logs;
 mod remove;
 mod restart;
@@ -23,6 +24,7 @@ impl Program {
 		match self.command {
 			Command::Add(command) => command.main(),
 			Command::Config(command) => command.main(),
+			Command::List(command) => command.main(),
 			Command::Logs(command) => command.main(),
 			Command::Remove(command) => command.main(),
 			Command::Restart(command) => command.main(),
@@ -38,6 +40,7 @@ impl Program {
 enum Command {
 	Add(add::Add),
 	Config(config::Config),
+	List(list::List),
 	Logs(logs::Logs),
 	Remove(remove::Remove),
 	Restart(restart::Restart),

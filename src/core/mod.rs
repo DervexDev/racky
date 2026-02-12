@@ -1,7 +1,7 @@
 use std::{
 	collections::HashMap,
 	fs,
-	sync::{Arc, RwLock},
+	sync::{Arc, RwLock, RwLockReadGuard},
 	time::SystemTime,
 };
 
@@ -21,8 +21,8 @@ pub type CorePtr = Arc<Core>;
 
 #[derive(Debug)]
 pub struct Core {
-	pub programs: RwLock<HashMap<String, ProgramPtr>>,
-	pub start_time: SystemTime,
+	programs: RwLock<HashMap<String, ProgramPtr>>,
+	start_time: SystemTime,
 }
 
 impl Core {
@@ -96,6 +96,10 @@ impl Core {
 		program.stop()
 	}
 
+	pub fn programs<'a>(self: &'a CorePtr) -> RwLockReadGuard<'a, HashMap<String, ProgramPtr>> {
+		rlock!(self.programs)
+	}
+
 	pub fn get_program(self: &CorePtr, name: &str) -> Option<ProgramPtr> {
 		rlock!(self.programs).get(name).cloned()
 	}
@@ -128,5 +132,10 @@ impl Core {
 				bail!("Program does not exist");
 			}
 		}
+	}
+
+	#[allow(clippy::needless_lifetimes)]
+	pub fn start_time<'a>(self: &'a CorePtr) -> &'a SystemTime {
+		&self.start_time
 	}
 }

@@ -31,7 +31,7 @@ fn main() -> ExitCode {
 		env::set_var("RUST_BACKTRACE", if cli.backtrace() { "1" } else { "0" });
 	}
 
-	logger::init(verbosity, log_style);
+	logger::init(verbosity, log_style, cli.is_server_start());
 	Config::load();
 
 	match cli.main() {

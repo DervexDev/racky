@@ -11,8 +11,8 @@ pub async fn main(State(core): State<CorePtr>, Query(request): Query<ProgramRequ
 		program
 	} else {
 		return response!(
-			BAD_REQUEST,
-			"Program {} has not run since the server started",
+			NOT_FOUND,
+			"Program {} has not been run since the server was started",
 			request.program
 		);
 	};
@@ -36,7 +36,7 @@ pub async fn main(State(core): State<CorePtr>, Query(request): Query<ProgramRequ
 		SignedDuration::from_secs(runtime.current.as_secs() as i64)
 	));
 	response.push_str(&format!(
-		"  Start Time: {:#}\n",
+		"  Start Time: {}\n",
 		state
 			.start_time
 			.current
@@ -52,7 +52,7 @@ pub async fn main(State(core): State<CorePtr>, Query(request): Query<ProgramRequ
 		SignedDuration::from_secs(runtime.total.as_secs() as i64)
 	));
 	response.push_str(&format!(
-		"  Start Time: {:#}\n",
+		"  Start Time: {}\n",
 		state
 			.start_time
 			.total

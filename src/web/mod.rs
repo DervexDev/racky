@@ -42,6 +42,7 @@ impl Web {
 			// Program routes
 			.route("/program/add", post(program::add::main).layer(BODY_SIZE_LIMIT))
 			.route("/program/config", post(program::config::main))
+			.route("/program/list", get(program::list::main))
 			.route("/program/logs", get(program::logs::main))
 			.route("/program/remove", post(program::remove::main))
 			.route("/program/restart", post(program::restart::main))

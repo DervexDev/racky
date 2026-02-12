@@ -105,6 +105,10 @@ impl Cli {
 		}
 	}
 
+	pub fn is_server_start(&self) -> bool {
+		matches!(&self.command, Commands::Server(server) if server.is_start())
+	}
+
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Commands::Config(command) => command.main(),

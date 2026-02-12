@@ -4,10 +4,10 @@ use axum::{extract::State, response::IntoResponse};
 use jiff::SignedDuration;
 use sysinfo::{Components, Disks, System};
 
-use crate::{consts::GIGABYTE, core::CorePtr, response, rlock, util};
+use crate::{consts::GIGABYTE, core::CorePtr, response, util};
 
 pub async fn main(State(core): State<CorePtr>) -> impl IntoResponse {
-	let programs = rlock!(core.programs);
+	let programs = core.programs();
 
 	let mut system = System::new_all();
 	system.refresh_all();
@@ -22,9 +22,12 @@ pub async fn main(State(core): State<CorePtr>) -> impl IntoResponse {
 	response.push_str(&format!("  Version: {}\n", env!("CARGO_PKG_VERSION")));
 	response.push_str(&format!(
 		"  Uptime: {:#}\n",
-		SignedDuration::from_secs(core.start_time.elapsed().unwrap_or_default().as_secs() as i64)
+		SignedDuration::from_secs(core.start_time().elapsed().unwrap_or_default().as_secs() as i64)
 	));
-	response.push_str(&format!("  Start Time: {:#}\n", util::timestamp(Some(core.start_time))));
+	response.push_str(&format!(
+		"  Start Time: {}\n",
+		util::timestamp(Some(*core.start_time()))
+	));
 	response.push_str(&format!(
 		"  Running Programs: {}/{} ({})\n",
 		programs.iter().filter(|(_, program)| program.is_active()).count(),
@@ -50,7 +53,7 @@ pub async fn main(State(core): State<CorePtr>) -> impl IntoResponse {
 		SignedDuration::from_secs(System::uptime() as i64)
 	));
 	response.push_str(&format!(
-		"  Boot Time: {:#}\n",
+		"  Boot Time: {}\n",
 		util::timestamp(Some(SystemTime::UNIX_EPOCH + Duration::from_secs(System::boot_time())))
 	));
 	response.push_str(&format!("  Processes: {}\n", system.processes().len()));

@@ -54,7 +54,7 @@ macro_rules! racky_info {
 	};
 }
 
-pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
+pub fn init(verbosity: LevelFilter, log_style: WriteStyle, log_date: bool) {
 	let (tx, rx) = mpsc::channel::<String>();
 	let mut builder = Builder::new();
 
@@ -71,15 +71,20 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 			Level::Trace => Color::White,
 		};
 
-		let message = format!(
-			"[{}] {}: {}",
-			buffer.timestamp(),
-			record.level().to_string().color(color).bold(),
-			record.args()
-		);
+		let message = if log_date {
+			let message = format!(
+				"[{}] {}: {}",
+				buffer.timestamp(),
+				record.level().to_string().color(color).bold(),
+				record.args()
+			);
+			tx.send(message.clone()).ok();
+			message
+		} else {
+			format!("{}: {}", record.level().to_string().color(color).bold(), record.args())
+		};
 
-		tx.send(message.clone()).ok();
-		writeln!(buffer, "{message}",)
+		writeln!(buffer, "{message}")
 	});
 
 	if verbosity == LevelFilter::Off {
@@ -92,6 +97,10 @@ pub fn init(verbosity: LevelFilter, log_style: WriteStyle) {
 
 	builder.write_style(log_style);
 	builder.init();
+
+	if !log_date {
+		return;
+	}
 
 	thread::spawn(move || {
 		let path = dirs::logs().join("racky");

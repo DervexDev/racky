@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 pub mod add;
 pub mod config;
+pub mod list;
 pub mod logs;
 pub mod remove;
 pub mod restart;

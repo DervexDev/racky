@@ -510,7 +510,7 @@ impl State {
 			self.runtime.set_total(self.runtime.total.saturating_add(elapsed));
 		}
 
-		if is_running || matches!(status, Status::Stopped) {
+		if is_running || status == Status::Stopped {
 			self.index += 1;
 		}
 

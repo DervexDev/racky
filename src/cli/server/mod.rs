@@ -23,6 +23,10 @@ pub struct Server {
 }
 
 impl Server {
+	pub fn is_start(&self) -> bool {
+		matches!(self.command, Command::Start(_))
+	}
+
 	pub fn main(self) -> Result<()> {
 		match self.command {
 			Command::Add(command) => command.main(),

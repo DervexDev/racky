@@ -41,7 +41,7 @@ impl Default for Config {
 			port: 5000,
 			password: String::new(),
 			log_size_limit: 10,
-			log_file_limit: 8,
+			log_file_limit: 20,
 		}
 	}
 }
