@@ -29,7 +29,7 @@ lazy_static = "1.5.0"
 log = "0.4.29"
 optfield = "0.4.0"
 path-clean = "1.0.1"
-regex = "1.12.2"
+regex = "1.12.3"
 reqwest = { version = "0.13.1", default-features = false, features = [
     "blocking",
     "form",
