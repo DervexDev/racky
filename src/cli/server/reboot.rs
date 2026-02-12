@@ -13,10 +13,12 @@ pub struct Reboot {
 
 impl Reboot {
 	pub fn main(self) -> Result<()> {
-		logger::prompt(
+		if !logger::prompt(
 			"Are you sure you want to reboot the server? This will reboot your actual hardware and you will need to wait until it boots up before you can use Racky again!",
 			true,
-		);
+		) {
+			return Ok(());
+		}
 
 		self.reboot().desc("Failed to reboot the server")
 	}

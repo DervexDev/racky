@@ -11,6 +11,6 @@ pub struct Request {
 pub async fn main(Query(request): Query<Request>) -> impl IntoResponse {
 	match logger::read_file(&dirs::logs().join("racky"), request.page.unwrap_or_default()) {
 		Ok(logs) => response!(OK, logs),
-		Err(error) => response!(BAD_REQUEST, format!("Failed to get server logs: {error}")),
+		Err(err) => response!(BAD_REQUEST, "{err}"),
 	}
 }

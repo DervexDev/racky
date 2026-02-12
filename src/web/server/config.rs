@@ -20,6 +20,6 @@ pub async fn main(Form(request): Form<Request>) -> impl IntoResponse {
 
 	match result {
 		Ok(message) => response!(OK, message),
-		Err(err) => response!(INTERNAL_SERVER_ERROR, err.to_string()),
+		Err(err) => response!(INTERNAL_SERVER_ERROR, "{err}"),
 	}
 }

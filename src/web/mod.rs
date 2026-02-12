@@ -57,6 +57,7 @@ impl Web {
 			.route("/server/shutdown", post(server::shutdown::main))
 			.route("/server/status", get(server::status::main))
 			.route("/server/stop", post(server::stop::main))
+			.route("/server/update", post(server::update::main))
 			// Middleware
 			.layer(from_fn_with_state(password, middleware::auth::main))
 			.with_state(core);
@@ -69,7 +70,7 @@ impl Web {
 	}
 
 	#[tokio::main]
-	pub async fn start(self) -> Result<()> {
+	pub async fn serve(self) -> Result<()> {
 		axum::serve(
 			net::TcpListener::bind((self.address.as_str(), self.port)).await?,
 			self.router,

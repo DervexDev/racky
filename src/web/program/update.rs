@@ -51,5 +51,8 @@ pub async fn main(mut multipart: Multipart) -> impl IntoResponse {
 		Err(err) => return response!(INTERNAL_SERVER_ERROR, "Failed to decompress zipped program: {err}"),
 	};
 
-	response!(OK, "Program {name} updated successfully")
+	response!(
+		OK,
+		"Program {name} updated successfully. Restart it for the changes to take effect"
+	)
 }

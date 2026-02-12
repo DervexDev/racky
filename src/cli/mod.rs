@@ -12,6 +12,8 @@ mod config;
 mod install;
 mod program;
 mod server;
+mod uninstall;
+mod update;
 
 macro_rules! about {
 	() => {
@@ -109,6 +111,8 @@ impl Cli {
 			Commands::Install(command) => command.main(),
 			Commands::Program(command) => command.main(),
 			Commands::Server(command) => command.main(),
+			Commands::Uninstall(command) => command.main(),
+			Commands::Update(command) => command.main(),
 		}
 	}
 }
@@ -119,4 +123,6 @@ pub enum Commands {
 	Install(install::Install),
 	Program(program::Program),
 	Server(server::Server),
+	Uninstall(uninstall::Uninstall),
+	Update(update::Update),
 }

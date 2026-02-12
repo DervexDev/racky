@@ -63,6 +63,6 @@ impl Start {
 		drop(config);
 		drop(core);
 
-		web.start().desc("Could not start the serve session")
+		web.serve().desc("Could not start the serve session")
 	}
 }

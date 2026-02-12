@@ -5,3 +5,4 @@ pub mod restart;
 pub mod shutdown;
 pub mod status;
 pub mod stop;
+pub mod update;

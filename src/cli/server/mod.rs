@@ -13,6 +13,7 @@ mod shutdown;
 mod start;
 mod status;
 mod stop;
+mod update;
 
 /// Manage and configure Racky servers
 #[derive(Parser)]
@@ -36,6 +37,7 @@ impl Server {
 			Command::Start(command) => command.main(),
 			Command::Status(command) => command.main(),
 			Command::Stop(command) => command.main(),
+			Command::Update(command) => command.main(),
 		}
 	}
 }
@@ -54,4 +56,5 @@ enum Command {
 	Start(start::Start),
 	Status(status::Status),
 	Stop(stop::Stop),
+	Update(update::Update),
 }

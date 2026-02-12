@@ -19,13 +19,9 @@ pub struct Config {
 
 impl Config {
 	pub fn main(self) -> Result<()> {
-		racky_info!(
-			"{}",
-			RackyConfig::new_mut()
-				.apply_user_data(self.data, self.default, self.list)
-				.desc("Failed to update/list Racky config")?
-		);
-
-		Ok(())
+		RackyConfig::new_mut()
+			.apply_user_data(self.data, self.default, self.list)
+			.desc("Failed to update/list Racky config")
+			.map(|message| racky_info!("{message}"))
 	}
 }

@@ -22,7 +22,7 @@ pub async fn main() -> impl IntoResponse {
 			response!(OK, "Server shutting down...")
 		}
 		Err(err) => {
-			error!("{err}");
+			error!("Server failed to shutdown: {err}");
 			response!(INTERNAL_SERVER_ERROR, "{err}")
 		}
 	}

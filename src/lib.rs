@@ -8,6 +8,7 @@ pub mod consts;
 pub mod core;
 pub mod dirs;
 pub mod ext;
+pub mod installer;
 pub mod logger;
 pub mod servers;
 pub mod util;

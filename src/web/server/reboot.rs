@@ -22,7 +22,7 @@ pub async fn main() -> impl IntoResponse {
 			response!(OK, "Server rebooting...")
 		}
 		Err(err) => {
-			error!("{err}");
+			error!("Server failed to reboot: {err}");
 			response!(INTERNAL_SERVER_ERROR, "{err}")
 		}
 	}

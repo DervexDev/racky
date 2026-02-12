@@ -70,6 +70,7 @@ pub fn get_user() -> Result<String> {
 	result.desc("Failed to get current user")
 }
 
+/// Extracts the exit code from a process status
 pub fn get_exit_code(status: &ExitStatus) -> i32 {
 	#[cfg(unix)]
 	let code = status
@@ -88,6 +89,11 @@ pub fn get_service() -> String {
 	get_user()
 		.map(|user| format!("racky-{user}"))
 		.unwrap_or_else(|_| String::from("racky"))
+}
+
+/// Returns true if the current process is running as a systemd service
+pub fn is_service() -> bool {
+	cfg!(target_os = "linux") && env::var("INVOCATION_ID").is_ok()
 }
 
 /// Delays the execution of a function for a given number of seconds

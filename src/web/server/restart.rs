@@ -1,12 +1,10 @@
-use std::env;
-
 use axum::response::IntoResponse;
 use log::{debug, error};
 
 use crate::{command::Command, response, util};
 
 pub async fn main() -> impl IntoResponse {
-	if !cfg!(target_os = "linux") || env::var("INVOCATION_ID").is_err() {
+	if !util::is_service() {
 		return response!(
 			BAD_REQUEST,
 			"Restarting the server is currently only supported on Linux systems running Racky as a service!"
