@@ -1,4 +1,4 @@
-use std::{env, fs, path::Path};
+use std::{collections::HashMap, env, fs, path::Path};
 
 use anyhow::{Result, bail};
 use log::trace;
@@ -9,7 +9,7 @@ use crate::{
 	config::Config,
 	dirs,
 	ext::{PathExt, ResultExt},
-	racky_error, racky_warn, util,
+	racky_error, racky_warn, servers, util,
 };
 
 const SYSTEMD_SERVICE: &str = "[Unit]\n\
@@ -43,11 +43,18 @@ pub fn install(server: bool, force: bool) -> Result<()> {
 	}
 
 	let config_path = config_dir.join("racky.toml");
+	let servers_path = dirs::racky().join("servers.toml");
 
 	if (!config_path.exists() || force)
 		&& let Err(err) = Config::default().save()
 	{
 		racky_warn!("Failed to create config file at {config_path:?}: {err}");
+	}
+
+	if (!servers_path.exists() || force)
+		&& let Err(err) = servers::write(&HashMap::new())
+	{
+		racky_warn!("Failed to create servers file at {servers_path:?}: {err}");
 	}
 
 	let current_exe = env::current_exe()?;
