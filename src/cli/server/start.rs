@@ -1,8 +1,16 @@
 use anyhow::{Result, ensure};
 use clap::Parser;
 use colored::Colorize;
+use log::{trace, warn};
 
-use crate::{config::Config, core::Core, ext::ResultExt, racky_error, racky_info, racky_warn, web::Web};
+use crate::{
+	config::Config,
+	core::Core,
+	ext::ResultExt,
+	racky_error, racky_info, racky_warn,
+	servers::{self, Server},
+	web::Web,
+};
 
 /// Start the Racky server (used by systemd service)
 #[derive(Parser)]
@@ -34,9 +42,15 @@ impl Start {
 			.filter(|p| !p.is_empty());
 
 		let core = Core::new();
-		let web = Web::new(core.clone(), &address, port, password);
+		let web = Web::new(core.clone(), &address, port, password.clone());
 
 		ensure!(web.is_port_free(), "Port {} is already in use", port.to_string().bold());
+
+		match Self::save_server(&address, port, password) {
+			Ok(true) => trace!("Saved local server details"),
+			Err(err) => warn!("Failed to save local server: {err}"),
+			_ => (),
+		}
 
 		let (started, total) = core.start().desc("Failed to start core")?;
 		let message = format!(
@@ -64,5 +78,27 @@ impl Start {
 		drop(core);
 
 		web.serve().desc("Could not start the serve session")
+	}
+
+	fn save_server(address: &str, port: u16, password: Option<String>) -> Result<bool> {
+		let mut servers = servers::read()?;
+
+		if servers.contains_key("local") {
+			return Ok(false);
+		}
+
+		servers.insert(
+			String::from("local"),
+			Server {
+				address: address.to_owned(),
+				port,
+				password: password.unwrap_or_default(),
+				default: !servers.values().any(|s| s.default),
+			},
+		);
+
+		servers::write(&servers)?;
+
+		Ok(true)
 	}
 }
