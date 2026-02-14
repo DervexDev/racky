@@ -106,12 +106,12 @@ impl Client {
 	}
 
 	fn format_url(&self, path: &str) -> String {
-		format!("http://{}:{}/{path}", self.address, self.port)
+		format!("https://{}:{}/{path}", self.address, self.port)
 	}
 
 	fn send(&self, mut request: RequestBuilder) -> Result<Response> {
 		if let Some(password) = &self.password {
-			request = request.header("Authorization", password);
+			request = request.bearer_auth(password);
 		}
 
 		let response = request

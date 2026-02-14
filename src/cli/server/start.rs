@@ -4,7 +4,7 @@ use colored::Colorize;
 use log::{trace, warn};
 
 use crate::{
-	config::Config,
+	config::{self, Config},
 	core::Core,
 	ext::ResultExt,
 	racky_error, racky_info, racky_warn,
@@ -38,15 +38,23 @@ impl Start {
 		let port = self.port.unwrap_or(config.port);
 		let password = self
 			.password
-			.or(Some(config.password.clone()))
-			.filter(|p| !p.is_empty());
+			.as_ref()
+			.and_then(|p| config::hash_password(p).ok())
+			.or_else(|| {
+				let p = config.password.clone();
+				if p.is_empty() || !config::is_password_hash(&p) {
+					None
+				} else {
+					Some(p)
+				}
+			});
 
 		let core = Core::new();
 		let web = Web::new(core.clone(), &address, port, password.clone());
 
 		ensure!(web.is_port_free(), "Port {} is already in use", port.to_string().bold());
 
-		match Self::save_server(&address, port, password) {
+		match Self::save_server(&address, port, self.password.filter(|p| !p.is_empty())) {
 			Ok(true) => trace!("Saved local server details"),
 			Err(err) => warn!("Failed to save local server: {err}"),
 			_ => (),
@@ -71,7 +79,7 @@ impl Start {
 
 		racky_info!(
 			"Racky server is running on {}",
-			format!("http://{address}:{port}").bold()
+			format!("https://{address}:{port}").bold()
 		);
 
 		drop(config);

@@ -5,11 +5,14 @@ use std::{
 };
 
 use anyhow::{Context, Error, Result, bail};
+use argon2::Argon2;
 use config_derive::{Get, Iter, Set, Val};
 use documented::DocumentedFields;
 use lazy_static::lazy_static;
 use log::{error, info, warn};
 use optfield::optfield;
+use password_hash::{PasswordHasher, SaltString};
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use toml;
 
@@ -73,6 +76,16 @@ impl Config {
 			Err(err) => error!("Racky config could not be loaded: {err}"),
 		}
 
+		if !config.password.is_empty()
+			&& !is_password_hash(&config.password)
+			&& let Ok(hash) = hash_password(&config.password)
+		{
+			config.password = hash;
+			if let Err(e) = config.save() {
+				warn!("Could not save migrated password hash: {e}");
+			}
+		}
+
 		*CONFIG.write().unwrap() = config;
 	}
 
@@ -90,12 +103,21 @@ impl Config {
 	}
 
 	pub fn update(&mut self, key: &str, value: &str) -> Result<()> {
+		let value = if key == "password" && !value.is_empty() {
+			hash_password(value).with_context(|| "Failed to hash password for storage")?
+		} else {
+			value.to_owned()
+		};
+
 		let result = self
-			.set(key, value)
+			.set(key, &value)
 			.with_context(|| format!("Failed to set `{key}` to `{value}`"));
 
 		match &result {
-			Ok(()) => info!("Racky config updated: `{key}` = `{value}`"),
+			Ok(()) => info!(
+				"Racky config updated: `{key}` = `{}`",
+				if key == "password" { "***" } else { &value }
+			),
 			Err(err) => warn!("Racky config could not be updated: {err}"),
 		}
 
@@ -123,6 +145,10 @@ impl Config {
 
 			let default = default.to_string();
 			let mut current = self.get(setting).map(|v| v.to_string()).unwrap();
+
+			if setting == "password" && !current.is_empty() {
+				current = "***".to_owned();
+			}
 
 			if current == default {
 				current = String::new();
@@ -177,4 +203,17 @@ impl Config {
 
 		Ok(format!("Configuration updated successfully ({changed} changed)"))
 	}
+}
+
+pub fn hash_password(plain: &str) -> Result<String> {
+	let salt = SaltString::generate(&mut OsRng);
+	let hash = Argon2::default()
+		.hash_password(plain.as_bytes(), &salt)
+		.map_err(|e| anyhow::anyhow!("password hashing: {}", e))?
+		.to_string();
+	Ok(hash)
+}
+
+pub fn is_password_hash(value: &str) -> bool {
+	value.starts_with("$argon2")
 }

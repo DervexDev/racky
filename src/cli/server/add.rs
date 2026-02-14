@@ -1,6 +1,7 @@
 use anyhow::{Result, ensure};
 use clap::Parser;
 use colored::Colorize;
+use dialoguer::Password;
 
 use crate::{
 	config::Config,
@@ -36,7 +37,16 @@ impl Add {
 
 		let address = self.address.unwrap_or(config.address);
 		let port = self.port.unwrap_or(config.port);
-		let password = self.password.unwrap_or(config.password);
+		let password = self
+			.password
+			.or_else(|| {
+				Password::new()
+					.with_prompt("Server password")
+					.allow_empty_password(true)
+					.interact()
+					.ok()
+			})
+			.unwrap_or(config.password);
 
 		let mut servers = servers::read()?;
 
@@ -68,7 +78,7 @@ impl Add {
 		racky_info!(
 			"Server {} with URL {} added successfully",
 			self.server.bold(),
-			format!("http://{address}:{port}").bold()
+			format!("https://{address}:{port}").bold()
 		);
 
 		Ok(())

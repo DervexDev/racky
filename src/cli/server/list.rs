@@ -21,11 +21,17 @@ impl List {
 		table.set_header(vec!["Alias", "Address", "Port", "Password", "Default"]);
 
 		for (alias, server) in servers {
+			let password = if server.password.is_empty() {
+				String::new()
+			} else {
+				String::from("***")
+			};
+
 			table.add_row(vec![
 				alias,
 				server.address,
 				server.port.to_string(),
-				server.password,
+				password,
 				server.default.to_string(),
 			]);
 		}
