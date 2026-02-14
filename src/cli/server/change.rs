@@ -86,7 +86,7 @@ impl Change {
 		servers.insert(alias.clone(), server);
 		servers::write(&servers)?;
 
-		racky_info!("Server {} updated successfully", alias.bold(),);
+		racky_info!("Server {} updated successfully", alias.bold());
 
 		Ok(())
 	}

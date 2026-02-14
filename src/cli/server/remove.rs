@@ -28,7 +28,7 @@ impl Remove {
 
 		servers::write(&servers)?;
 
-		racky_info!("Server {} removed successfully", self.server.bold(),);
+		racky_info!("Server {} removed successfully", self.server.bold());
 
 		Ok(())
 	}
