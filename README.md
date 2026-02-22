@@ -1,3 +1,7 @@
+<div align="center">
+  <img alt="Logo" width="256" src=".github/logo.svg"/>
+</div>
+
 # Racky
 
 Racky is a simple tool for managing, running and monitoring programs on your home server(s) with ease!
